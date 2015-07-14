@@ -9,6 +9,7 @@ var bundleModule;
 var bundleOutputFile;
 var bundleToAdjunctPackageDir;
 var bundleAsJenkinsModule = false;
+var bundleTransforms;
 
 var adjunctBasePath = './target/generated-adjuncts/';
 var jsmodulesBasePath = './src/main/webapp/jsmodules/';
@@ -16,6 +17,8 @@ var jsmodulesBasePath = './src/main/webapp/jsmodules/';
 var srcPath = './js';
 var testSrcPath = './spec';
 var lessSrcPath = undefined;
+
+exports.gulp = gulp;
 
 exports.defineTasks = function(tasknames) {
     if (!tasknames) {
@@ -68,20 +71,28 @@ exports.bundle = function(module, as) {
     bundleModule = module;
     bundleOutputFile = as;
     
-    return {
+    var options = {
         asAdjunctResource: function(inPackageDir) {
             if (!inPackageDir) {
                 gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + module + "'. You can't specify a 'null' adjunct resource package dir."));
                 throw "'bundle' registration failed. See error above.";
             }
             bundleToAdjunctPackageDir = inPackageDir;
-            gutil.log("Bundle will be generated as an adjunct in '" + adjunctBasePath + "' as '" + bundleToAdjunctPackageDir + as + "'.");            
+            gutil.log("Bundle will be generated as an adjunct in '" + adjunctBasePath + "' as '" + bundleToAdjunctPackageDir + as + "'.");
+            return options;
         },
         asJenkinsModuleResource: function() {
             bundleAsJenkinsModule = true;
             gutil.log("Bundle will be generated as a Jenkins Module in '" + jsmodulesBasePath + "' as '" + as + "'.");            
+            return options;
+        },
+        withTransforms: function(transforms) {
+            bundleTransforms = transforms;
+            return options;
         }        
     };
+    
+    return options;
 };
 
 exports.logInfo = function(message) {
@@ -155,7 +166,12 @@ var tasks = {
         var hbsfy = require("hbsfy").configure({
             compiler: "require('jenkins-handlebars-rt/runtimes/handlebars3_rt')"
         });
-        bundler.transform(hbsfy);
+        bundler.transform(hbsfy);        
+        if (bundleTransforms) {
+            for (var i = 0; i < bundleTransforms.length; i++) {
+                bundler.transform(bundleTransforms[i]);        
+            }
+        }
         
         return bundler.bundle().pipe(source(bundleOutputFile))
             .pipe(gulp.dest(bundleTo));
