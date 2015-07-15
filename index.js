@@ -5,6 +5,8 @@ var jasmineReporters = require('jasmine-reporters');
 var browserify = require('browserify');
 var source = require('vinyl-source-stream');
 var transformTools = require('browserify-transform-tools');
+var _string = require('underscore.string');
+
 
 var bundleModule;
 var bundleOutputFile;
@@ -52,16 +54,27 @@ exports.src = function(path) {
     if (!path) {
         throw "Error: you can't unset the src path.";
     }
-    srcPath = path;
+    srcPath = normalizePath(path);
 };
 
 exports.tests = function(path) {
-    testSrcPath = path;
+    testSrcPath = normalizePath(path);
 };
 
 exports.less = function(path) {
     lessSrcPath = path;
 };
+
+function normalizePath(path) {
+    path = _string.ltrim(path, './')
+    path = _string.ltrim(path, '/')
+    path = _string.rtrim(path, '/');
+    
+    return path;
+}
+function packageToPath(packageName) {
+    return _string.replaceAll(packageName, '.', '/');
+}
 
 var moduleMappings = [];
 var requireTransform = transformTools.makeRequireTransform("requireTransform",
@@ -110,23 +123,32 @@ var importWrapperTransform = transformTools.makeStringTransform("importWrapperTr
         }
     });
 
-exports.bundle = function(module, as) {
-    if (!as) {
-        gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + module + "'. You must specify an 'as' arg (the name of the JavaScript bundle file)."));
+exports.bundle = function(modulePath, as) {
+    if (!modulePath) {
+        gutil.log(gutil.colors.red("Error: Invalid bundle registration for module 'modulePath' must be specify."));
         throw "'bundle' registration failed. See error above.";
     }
+    if (!as) {
+        var lastSlash = modulePath.indexOf('/');
+        
+        if (lastSlash === -1) {
+            as = modulePath;
+        } else {
+            as = _string.strRightBack(modulePath, '/');
+        } 
+    }
     
-    bundleModule = module;
+    bundleModule = modulePath;
     bundleOutputFile = as;
     
     var options = {
-        asAdjunctResource: function(inPackageDir) {
-            if (!inPackageDir) {
-                gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + module + "'. You can't specify a 'null' adjunct resource package dir."));
+        inAdjunctPackage: function(packageName) {
+            if (!packageName) {
+                gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + modulePath + "'. You can't specify a 'null' adjunct package name."));
                 throw "'bundle' registration failed. See error above.";
             }
-            bundleToAdjunctPackageDir = inPackageDir;
-            gutil.log("Bundle will be generated as an adjunct in '" + adjunctBasePath + "' as '" + bundleToAdjunctPackageDir + as + "'.");
+            bundleToAdjunctPackageDir = packageToPath(packageName);
+            gutil.log("Bundle will be generated as an adjunct in '" + adjunctBasePath + "' as '" + packageName + "." + _string.rtrim(as, '.js') + "' (.js file).");
             return options;
         },
         asJenkinsModuleResource: function() {
@@ -192,12 +214,8 @@ var tasks = {
 
         var testSpecs = testSrcPath + '/**/*-spec.js';
         exports.logInfo('Running tests in ' + testSpecs);
-        try {
-            gulp.src(testSpecs)
-                .pipe(jasmine({reporter: [terminalReporter, junitReporter]}));
-        } finally {
-            exports.logInfo('Test run complete.');
-        }
+        gulp.src(testSpecs)
+            .pipe(jasmine({reporter: [terminalReporter, junitReporter]}));
     },
     bundle: function() {
         if (!bundleModule) {
@@ -205,7 +223,7 @@ var tasks = {
             throw "'bundle' task failed. See error above.";
         }
         if (!bundleToAdjunctPackageDir && !bundleAsJenkinsModule) {
-            gutil.log(gutil.colors.red("Error: Cannot perform 'bundle' task. No bundle output sec defined. You must call 'asAdjunctResource([adjunct-package-dir])' or 'asJenkinsModuleResource' on the response return from the call to 'bundle'."));
+            gutil.log(gutil.colors.red("Error: Cannot perform 'bundle' task. No bundle output sec defined. You must call 'inAdjunctPackage([adjunct-package-name])' or 'asJenkinsModuleResource' on the response return from the call to 'bundle'."));
             throw "'bundle' task failed. See error above.";
         }
 
@@ -213,7 +231,7 @@ var tasks = {
         if (bundleAsJenkinsModule) {
             bundleTo = jsmodulesBasePath;
         } else {
-            bundleTo = adjunctBasePath + bundleToAdjunctPackageDir;
+            bundleTo = adjunctBasePath + "/" + bundleToAdjunctPackageDir;
         }
 
         if (lessSrcPath) {

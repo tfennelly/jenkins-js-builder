@@ -17,7 +17,7 @@ var builder = require('jenkins-js-builder');
 
 builder.defineTasks(['test', 'bundle', 'rebundle']);
 
-builder.bundle('./index.js', 'myappbundle.js').asAdjunctResource('com/acme/');
+builder.bundle('./index.js', 'myappbundle.js').inAdjunctPackage('com.acme');
 
 ```
 
@@ -50,7 +50,7 @@ Create a Browserify Javascript bundle.
 You can generate the bundle as a Jenkins adjunct:
  
 ```
-builder.bundle('./index.js', 'myappbundle.js').asAdjunctResource('com/acme/');
+builder.bundle('./index.js', 'myappbundle.js').inAdjunctPackage('com.acme');
 ```
 
 This simply means the bundle is put into a package 
@@ -83,3 +83,10 @@ This simply means the module will be put into the `webapp` folder, making it loa
 
 Watch module source files (`index.js`, `./lib/**/*.js` and `./lib/**/*.hbs`) for change, auto-running the
 `bundle` task whenever changes are detected.
+
+Note that this task will not be run by default, so you need to specify it explicitly on the gulp command in
+order to run it e.g.
+
+```
+gulp rebundle
+```
