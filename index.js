@@ -4,6 +4,7 @@ var jasmine = require('gulp-jasmine');
 var jasmineReporters = require('jasmine-reporters');
 var browserify = require('browserify');
 var source = require('vinyl-source-stream');
+var transformTools = require('browserify-transform-tools');
 
 var bundleModule;
 var bundleOutputFile;
@@ -62,6 +63,53 @@ exports.less = function(path) {
     lessSrcPath = path;
 };
 
+var moduleMappings = [];
+var requireTransform = transformTools.makeRequireTransform("requireTransform",
+    {evaluateArguments: true},
+    function(args, opts, cb) {
+        var required = args[0];
+
+        for (var i = 0; i < moduleMappings.length; i++) {
+            var mapping = moduleMappings[i];
+            if (mapping.from === required) {
+                if (mapping.require) {
+                    return cb(null, "require('" + mapping.require + "')");
+                } else {
+                    return cb(null, "require('jenkins-modules').require('" + mapping.to + "')");
+                }
+            }
+        }
+        return cb();
+    });
+
+var isFirstModule = true;
+var importWrapperTransform = transformTools.makeStringTransform("importWrapperTransform", {},
+    function (content, opts, done) {
+        if (isFirstModule) {
+            var mappings = "";
+            for (var i = 0; i < moduleMappings.length; i++) {
+                var mapping = moduleMappings[i];
+                if (mappings.length > 0) {
+                    mappings += ", ";
+                }
+                mappings += "'" + mapping.to + "'";
+            }
+            var wrappedContent = 
+                "require('jenkins-modules')\n" +
+                "    .import(" + mappings + ")\n" +
+                "    .then(function() {\n" +
+                "\n" +
+                content +
+                "\n" +
+                "    });\n";
+
+            isFirstModule = false;
+            return done(null, wrappedContent);
+        } else {
+            return done(null, content);
+        }
+    });
+
 exports.bundle = function(module, as) {
     if (!as) {
         gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + module + "'. You must specify an 'as' arg (the name of the JavaScript bundle file)."));
@@ -88,6 +136,25 @@ exports.bundle = function(module, as) {
         },
         withTransforms: function(transforms) {
             bundleTransforms = transforms;
+            return options;
+        },
+        withExternalModuleMapping: function(from, to, require) {
+            if (!from || !to) {
+                var message = "Cannot call 'withExternalModuleMapping' without defining both 'to' and 'from' module names.";
+                exports.logError(message);
+                throw message;
+            }
+            
+            // special case because we are externalizing handlebars runtime for handlebarsify.
+            if (from === 'handlebars' && to === 'handlebars:handlebars3' && !require) {
+                require = 'jenkins-handlebars-rt/runtimes/handlebars3_rt';
+            }
+            
+            moduleMappings.push({
+                from: from, 
+                to: to, 
+                require: require
+            });
             return options;
         }        
     };
@@ -171,6 +238,10 @@ var tasks = {
             for (var i = 0; i < bundleTransforms.length; i++) {
                 bundler.transform(bundleTransforms[i]);        
             }
+        }
+        if (moduleMappings.length > 0) {
+            bundler.transform(requireTransform);
+            bundler.transform(importWrapperTransform);
         }
         
         return bundler.bundle().pipe(source(bundleOutputFile))
