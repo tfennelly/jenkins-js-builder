@@ -63,7 +63,7 @@ function normalizePath(path) {
     return path;
 }
 function packageToPath(packageName) {
-    return _string.replaceAll(packageName, '.', '/');
+    return _string.replaceAll(packageName, '\\.', '/');
 }
 
 exports.bundle = function(modulePath, as) {
