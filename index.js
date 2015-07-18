@@ -145,6 +145,15 @@ exports.bundle = function(modulePath, as) {
         bundle.lessSrcPath = path;
         return bundle;
     };
+    bundle.export = function() {
+        var fs = require('fs');
+        var xmlParser = require('xml2js').parseString;
+        var pomXML = fs.readFileSync('pom.xml', "utf-8");
+        
+        xmlParser(pomXML, function (err, pom) {
+            bundle.bundleExportPlugin = pom.project.artifactId[0];
+        });                
+    }
     
     bundles.push(bundle);
     
@@ -239,8 +248,8 @@ var tasks = {
                     bundler.transform(bundle.bundleTransforms[i]);        
                 }
             }
-            if (bundle.moduleMappings.length > 0) {
-                addModuleMappingTransforms(bundle.moduleMappings, bundler);
+            if (bundle.moduleMappings.length > 0 || bundle.bundleExportPlugin) {
+                addModuleMappingTransforms(bundle, bundler);
             }
             
             bundler.bundle().pipe(source(bundle.bundleOutputFile))
@@ -252,7 +261,9 @@ var tasks = {
     }
 };
 
-function addModuleMappingTransforms(moduleMappings, bundler) {
+function addModuleMappingTransforms(bundle, bundler) {
+    var moduleMappings = bundle.moduleMappings;
+    
     var requireTransform = transformTools.makeRequireTransform("requireTransform",
         {evaluateArguments: true},
         function(args, opts, cb) {
@@ -281,6 +292,17 @@ function addModuleMappingTransforms(moduleMappings, bundler) {
                     }
                     mappings += "'" + mapping.to + "'";
                 }
+                
+                if (bundle.bundleExportPlugin) {
+                    content += "\n" +
+                        "\t\trequire('jenkins-modules').export('" + bundle.bundleExportPlugin + "', '" + bundle.module + "', module);";
+                    
+                    if (bundle.lessSrcPath) {
+                        content += "\n" +
+                            "\t\trequire('jenkins-modules').addModuleCSSToPage('" + bundle.bundleExportPlugin + "', '" + bundle.module + "');";
+                    }
+                }
+                
                 var wrappedContent = 
                     "require('jenkins-modules')\n" +
                     "    .import(" + mappings + ")\n" +
