@@ -92,7 +92,7 @@ exports.bundle = function(moduleToBundle, as) {
     }
 
     bundle.bundleModule = moduleToBundle;
-    bundle.bundleOutputFile = as + '.js';
+    bundle.bundleOutputFile = bundle.as + '.js';
     bundle.moduleMappings = [];
     bundle.inAdjunctPackage = function(packageName) {
         if (!packageName) {
@@ -117,7 +117,7 @@ exports.bundle = function(moduleToBundle, as) {
     bundle.asJenkinsModuleResource = function() {
         assertBundleOutputUndefined();
         bundle.bundleAsJenkinsModule = true;
-        gutil.log("Bundle will be generated as a Jenkins Module in '" + jsmodulesBasePath + "' as '" + as + "'.");            
+        gutil.log("Bundle will be generated as a Jenkins Module in '" + jsmodulesBasePath + "' as '" + bundle.as + "'.");            
         return bundle;
     };
     bundle.withTransforms = function(transforms) {
