@@ -299,13 +299,13 @@ function addModuleMappingTransforms(bundle, bundler) {
     var importWrapperTransform = transformTools.makeStringTransform("importWrapperTransform", {},
         function (content, opts, done) {
             if (!importWrapApplied) {
-                var mappings = "";
+                var imports = "";
                 for (var i = 0; i < moduleMappings.length; i++) {
                     var mapping = moduleMappings[i];
-                    if (mappings.length > 0) {
-                        mappings += ", ";
+                    if (imports.length > 0) {
+                        imports += ", ";
                     }
-                    mappings += "'" + mapping.to + "'";
+                    imports += "'" + mapping.to + "'";
                 }
                 
                 if (bundle.bundleExportPlugin) {
@@ -318,17 +318,21 @@ function addModuleMappingTransforms(bundle, bundler) {
                     }
                 }
                 
-                var wrappedContent = 
-                    "require('jenkins-modules')\n" +
-                    "    .import(" + mappings + ")\n" +
-                    "    .then(function() {\n" +
-                    "\n" +
-                    content +
-                    "\n" +
-                    "    });\n";
-    
-                importWrapApplied = true;
-                return done(null, wrappedContent);
+                if (imports.length > 0) {
+                    var wrappedContent =
+                        "require('jenkins-modules')\n" +
+                            "    .import(" + imports + ")\n" +
+                            "    .then(function() {\n" +
+                            "\n" +
+                            content +
+                            "\n" +
+                            "    });\n";
+
+                    importWrapApplied = true;
+                    return done(null, wrappedContent);
+                } else {
+                    return done(null, content);
+                }
             } else {
                 return done(null, content);
             }
