@@ -80,6 +80,13 @@ exports.bundle = function(modulePath, as) {
     if (!as) {
         as = bundle.js;
     }
+    
+    function assertBundleOutputUndefined() {
+        if (bundle.bundleInDir || bundle.bundleAsJenkinsModule || bundle.bundleToAdjunctPackageDir) {
+            gutil.log(gutil.colors.red("Error: Invalid bundle registration. Bundle output (inAdjunctPackage, inDir, asJenkinsModuleResource) already defined."));
+            throw "'bundle' registration failed. See error above.";
+        }
+    }
 
     bundle.bundleModule = modulePath;
     bundle.bundleOutputFile = as;
@@ -89,11 +96,23 @@ exports.bundle = function(modulePath, as) {
             gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + modulePath + "'. You can't specify a 'null' adjunct package name."));
             throw "'bundle' registration failed. See error above.";
         }
+        assertBundleOutputUndefined();
         bundle.bundleToAdjunctPackageDir = packageToPath(packageName);
         gutil.log("Bundle will be generated as an adjunct in '" + adjunctBasePath + "' as '" + packageName + "." + bundle.module + "' (it's a .js file).");
         return bundle;
     };
+    bundle.inDir = function(dir) {
+        if (!dir) {
+            gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + modulePath + "'. You can't specify a 'null' dir name when calling inDir."));
+            throw "'bundle' registration failed. See error above.";
+        }
+        assertBundleOutputUndefined();
+        bundle.bundleInDir = normalizePath(dir);
+        gutil.log("Bundle will be generated in directory '" + bundle.bundleInDir + "' as '" + bundle.js + "'.");
+        return bundle;
+    };
     bundle.asJenkinsModuleResource = function() {
+        assertBundleOutputUndefined();
         bundle.bundleAsJenkinsModule = true;
         gutil.log("Bundle will be generated as a Jenkins Module in '" + jsmodulesBasePath + "' as '" + as + "'.");            
         return bundle;
@@ -183,6 +202,8 @@ var tasks = {
             var bundleTo;
             if (bundle.bundleAsJenkinsModule) {
                 bundleTo = jsmodulesBasePath;
+            } else if (bundle.bundleInDir) {
+                bundleTo = bundle.bundleInDir;
             } else {
                 bundleTo = adjunctBasePath + "/" + bundle.bundleToAdjunctPackageDir;
             }
