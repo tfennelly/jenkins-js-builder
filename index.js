@@ -66,19 +66,22 @@ function packageToPath(packageName) {
     return _string.replaceAll(packageName, '\\.', '/');
 }
 
-exports.bundle = function(modulePath, as) {
-    if (!modulePath) {
-        gutil.log(gutil.colors.red("Error: Invalid bundle registration for module 'modulePath' must be specify."));
+exports.bundle = function(moduleToBundle, as) {
+    if (!moduleToBundle) {
+        gutil.log(gutil.colors.red("Error: Invalid bundle registration for module 'moduleToBundle' must be specify."));
         throw "'bundle' registration failed. See error above.";
     }
 
     var bundle = {};
 
-    bundle.js = _string.strRightBack(modulePath, '/'); // The short name of the javascript file (with extension but without path) 
+    bundle.js = _string.strRightBack(moduleToBundle, '/'); // The short name of the javascript file (with extension but without path) 
     bundle.module = _string.rtrim(bundle.js, '.js'); // The short name with the .js extension removed
+    bundle.bundleDependencyModule = (moduleToBundle === bundle.module); // The specified module to bundle is the name of a module dependency.
     
     if (!as) {
-        as = bundle.js;
+        bundle.as = bundle.module;
+    } else {
+        bundle.as = _string.rtrim(as, '.js');
     }
     
     function assertBundleOutputUndefined() {
@@ -88,22 +91,22 @@ exports.bundle = function(modulePath, as) {
         }
     }
 
-    bundle.bundleModule = modulePath;
-    bundle.bundleOutputFile = as;
+    bundle.bundleModule = moduleToBundle;
+    bundle.bundleOutputFile = as + '.js';
     bundle.moduleMappings = [];
     bundle.inAdjunctPackage = function(packageName) {
         if (!packageName) {
-            gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + modulePath + "'. You can't specify a 'null' adjunct package name."));
+            gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + moduleToBundle + "'. You can't specify a 'null' adjunct package name."));
             throw "'bundle' registration failed. See error above.";
         }
         assertBundleOutputUndefined();
         bundle.bundleToAdjunctPackageDir = packageToPath(packageName);
-        gutil.log("Bundle will be generated as an adjunct in '" + adjunctBasePath + "' as '" + packageName + "." + bundle.module + "' (it's a .js file).");
+        gutil.log("Bundle will be generated as an adjunct in '" + adjunctBasePath + "' as '" + packageName + "." + bundle.as + "' (it's a .js file).");
         return bundle;
     };
     bundle.inDir = function(dir) {
         if (!dir) {
-            gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + modulePath + "'. You can't specify a 'null' dir name when calling inDir."));
+            gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + moduleToBundle + "'. You can't specify a 'null' dir name when calling inDir."));
             throw "'bundle' registration failed. See error above.";
         }
         assertBundleOutputUndefined();
@@ -232,8 +235,20 @@ var tasks = {
                     .pipe(gulp.dest(lessBundleTo));
             }
             
+            var fileToBundle = bundle.bundleModule;
+            if (bundle.bundleDependencyModule) {
+                // Lets generate a temp file containing the module require.
+                var fs = require('fs');
+                
+                if (!fs.existsSync('target')) {
+                    fs.mkdirSync('target');
+                }
+                fileToBundle = 'target/' + bundle.bundleOutputFile;
+                fs.writeFileSync(fileToBundle, "module.exports = require('" + bundle.module + "');");
+            }
+            
             var bundler = browserify({
-                entries: [bundle.bundleModule],
+                entries: [fileToBundle],
                 extensions: ['.js', '.hbs'],
                 cache: {},
                 packageCache: {},
@@ -295,11 +310,11 @@ function addModuleMappingTransforms(bundle, bundler) {
                 
                 if (bundle.bundleExportPlugin) {
                     content += "\n" +
-                        "\t\trequire('jenkins-modules').export('" + bundle.bundleExportPlugin + "', '" + bundle.module + "', module);";
+                        "\t\trequire('jenkins-modules').export('" + bundle.bundleExportPlugin + "', '" + bundle.as + "', module);";
                     
                     if (bundle.lessSrcPath) {
                         content += "\n" +
-                            "\t\trequire('jenkins-modules').addModuleCSSToPage('" + bundle.bundleExportPlugin + "', '" + bundle.module + "');";
+                            "\t\trequire('jenkins-modules').addModuleCSSToPage('" + bundle.bundleExportPlugin + "', '" + bundle.as + "');";
                     }
                 }
                 
