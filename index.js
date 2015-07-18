@@ -75,13 +75,13 @@ exports.bundle = function(moduleToBundle, as) {
     var bundle = {};
 
     bundle.js = _string.strRightBack(moduleToBundle, '/'); // The short name of the javascript file (with extension but without path) 
-    bundle.module = _string.rtrim(bundle.js, '.js'); // The short name with the .js extension removed
+    bundle.module = _string.strLeftBack(bundle.js, '.js'); // The short name with the .js extension removed
     bundle.bundleDependencyModule = (moduleToBundle === bundle.module); // The specified module to bundle is the name of a module dependency.
     
     if (!as) {
         bundle.as = bundle.module;
     } else {
-        bundle.as = _string.rtrim(as, '.js');
+        bundle.as = _string.strLeftBack(as, '.js');
     }
     
     function assertBundleOutputUndefined() {
