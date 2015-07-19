@@ -227,7 +227,7 @@ var tasks = {
                 if (bundle.bundleAsJenkinsModule) {
                     // If it's a jenkins module, the CSS etc need to go into a folder under jsmodulesBasePath
                     // and the name of the folder must be the module name
-                    lessBundleTo += '/' + bundle.module;
+                    lessBundleTo += '/' + bundle.as;
                 }
                 
                 gulp.src(bundle.lessSrcPath)
