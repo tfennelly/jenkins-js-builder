@@ -206,8 +206,8 @@ var tasks = {
         for (var i = 0; i < bundles.length; i++) {
             var bundle = bundles[i];
             
-            if (!bundle.bundleToAdjunctPackageDir && !bundle.bundleAsJenkinsModule) {
-                gutil.log(gutil.colors.red("Error: Cannot perform 'bundle' task. No bundle output sec defined. You must call 'inAdjunctPackage([adjunct-package-name])' or 'asJenkinsModuleResource' on the response return from the call to 'bundle'."));
+            if (!bundle.bundleToAdjunctPackageDir && !bundle.bundleAsJenkinsModule && !bundle.bundleInDir) {
+                gutil.log(gutil.colors.red("Error: Cannot perform 'bundle' task. No bundle output spec defined. You must call 'inAdjunctPackage([adjunct-package-name])' or 'asJenkinsModuleResource' or 'inDir([dir])' on the response return from the call to 'bundle'."));
                 throw "'bundle' task failed. See error above.";
             }
     
