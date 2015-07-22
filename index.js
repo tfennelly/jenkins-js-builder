@@ -45,14 +45,17 @@ exports.defineTasks = function(tasknames) {
 };
 
 exports.src = function(path) {
-    if (!path) {
-        throw "Error: you can't unset the src path.";
+    if (path) {
+        srcPath = normalizePath(path);
     }
-    srcPath = normalizePath(path);
+    return srcPath;
 };
 
 exports.tests = function(path) {
-    testSrcPath = normalizePath(path);
+    if (path) {
+        testSrcPath = normalizePath(path);
+    }
+    return testSrcPath;
 };
 
 function normalizePath(path) {
