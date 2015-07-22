@@ -195,9 +195,13 @@ var tasks = {
         });
 
         var testSpecs = testSrcPath + '/**/*-spec.js';
-        exports.logInfo('Running tests in ' + testSpecs);
-        gulp.src(testSpecs)
-            .pipe(jasmine({reporter: [terminalReporter, junitReporter]}));
+        try {
+            global.jenkinsBuilder = exports;
+            gulp.src(testSpecs)
+                .pipe(jasmine({reporter: [terminalReporter, junitReporter]}));            
+        } finally {
+            delete global.jenkinsBuilder;
+        }        
     },
     bundle: function() {
         if (bundles.length === 0) {
