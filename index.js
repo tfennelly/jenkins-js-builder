@@ -326,7 +326,7 @@ function addModuleMappingTransforms(bundle, bundler) {
                     var wrappedContent =
                         "require('jenkins-modules')\n" +
                             "    .import(" + imports + ")\n" +
-                            "    .then(function() {\n" +
+                            "    .onFulfilled(function() {\n" +
                             "\n" +
                             content +
                             "\n" +
