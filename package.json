@@ -1,6 +1,6 @@
 {
   "name": "jenkins-js-builder",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "Jenkins CI JavaScript Build utilities.",
   "main": "index.js",
   "scripts": {
@@ -18,7 +18,6 @@
     "handlebars": "^3.0.3",
     "hbsfy": "^2.2.1",
     "jasmine-reporters": "^2.0.6",
-    "jsdom": "3.1.2",
     "underscore.string": "^3.1.1",
     "vinyl-source-stream": "^1.1.0",
     "window-handle": "0.0.6",
