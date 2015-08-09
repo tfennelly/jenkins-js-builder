@@ -309,52 +309,55 @@ function addModuleMappingTransforms(bundle, bundler) {
     var importExportTransform = transformTools.makeStringTransform("importExportTransform", {},
         function (content, opts, done) {
             if (!importExportApplied) {
-                var imports = "";
-                for (var i = 0; i < moduleMappings.length; i++) {
-                    var mapping = moduleMappings[i];
-                    if (imports.length > 0) {
-                        imports += ", ";
+                try {
+                    var imports = "";
+                    for (var i = 0; i < moduleMappings.length; i++) {
+                        var mapping = moduleMappings[i];
+                        if (imports.length > 0) {
+                            imports += ", ";
+                        }
+                        imports += "'" + mapping.to + "'";
                     }
-                    imports += "'" + mapping.to + "'";
-                }
-                
-                var exportNamespace = 'undefined'; // global namespace
-                var exportModule = '{}'; // exporting nothing (an "empty" module object)
-                
-                if (bundle.bundleExportPlugin) {
-                    // It's a hpi plugin, so use it's name as the export namespace.
-                    exportNamespace = "'" + bundle.bundleExportPlugin + "'";
-                }
-                if (bundle.bundleExport) {
-                    // export function was called, so export the module.
-                    exportModule = 'module'; // export the module
-                }
-
-                // Always call export, even if the export function was not called on the builder instance.
-                // If the export function was not called, we export nothing (see above). In this case, it just 
-                // generates an event for any modules that need to sync on the load event for the module.
-                content += "\n" +
-                    "\t\trequire('jenkins-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
-
-                if (bundle.bundleExportPlugin && bundle.lessSrcPath) {
+    
+                    var exportNamespace = 'undefined'; // global namespace
+                    var exportModule = '{}'; // exporting nothing (an "empty" module object)
+    
+                    if (bundle.bundleExportPlugin) {
+                        // It's a hpi plugin, so use it's name as the export namespace.
+                        exportNamespace = "'" + bundle.bundleExportPlugin + "'";
+                    }
+                    if (bundle.bundleExport) {
+                        // export function was called, so export the module.
+                        exportModule = 'module'; // export the module
+                    }
+    
+                    // Always call export, even if the export function was not called on the builder instance.
+                    // If the export function was not called, we export nothing (see above). In this case, it just 
+                    // generates an event for any modules that need to sync on the load event for the module.
                     content += "\n" +
-                        "\t\trequire('jenkins-modules').addModuleCSSToPage('" + bundle.bundleExportPlugin + "', '" + bundle.as + "');";
-                }
-                
-                if (imports.length > 0) {
-                    var wrappedContent =
-                        "require('jenkins-modules')\n" +
-                            "    .import(" + imports + ")\n" +
-                            "    .onFulfilled(function() {\n" +
-                            "\n" +
-                            content +
-                            "\n" +
-                            "    });\n";
-
-                    importExportApplied = true;
-                    return done(null, wrappedContent);
-                } else {
-                    return done(null, content);
+                        "\t\trequire('jenkins-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
+    
+                    if (bundle.bundleExportPlugin && bundle.lessSrcPath) {
+                        content += "\n" +
+                            "\t\trequire('jenkins-modules').addModuleCSSToPage('" + bundle.bundleExportPlugin + "', '" + bundle.as + "');";
+                    }
+    
+                    if (imports.length > 0) {
+                        var wrappedContent =
+                            "require('jenkins-modules')\n" +
+                                "    .import(" + imports + ")\n" +
+                                "    .onFulfilled(function() {\n" +
+                                "\n" +
+                                content +
+                                "\n" +
+                                "    });\n";
+    
+                        return done(null, wrappedContent);
+                    } else {
+                        return done(null, content);
+                    }
+                } finally {
+                    importExportApplied = true;                    
                 }
             } else {
                 return done(null, content);
