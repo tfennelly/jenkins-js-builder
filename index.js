@@ -156,8 +156,13 @@ exports.bundle = function(moduleToBundle, as) {
         var xmlParser = require('xml2js').parseString;
         var pomXML = fs.readFileSync('pom.xml', "utf-8");
         
+        bundle.bundleExport = true;
         xmlParser(pomXML, function (err, pom) {
-            bundle.bundleExportPlugin = pom.project.artifactId[0];
+            if (pom.project.packaging[0] === 'hpi') {
+                // It's a jenkins plugin (hpi), so capture the name of the plugin.
+                // This will be used later for the export namespace.
+                bundle.bundleExportPlugin = pom.project.artifactId[0];
+            }
         });                
     }
     
@@ -267,9 +272,7 @@ var tasks = {
                     bundler.transform(bundle.bundleTransforms[i]);        
                 }
             }
-            if (bundle.moduleMappings.length > 0 || bundle.bundleExportPlugin) {
-                addModuleMappingTransforms(bundle, bundler);
-            }
+            addModuleMappingTransforms(bundle, bundler);
             
             bundler.bundle().pipe(source(bundle.bundleOutputFile))
                 .pipe(gulp.dest(bundleTo));            
@@ -282,27 +285,30 @@ var tasks = {
 
 function addModuleMappingTransforms(bundle, bundler) {
     var moduleMappings = bundle.moduleMappings;
-    
-    var requireTransform = transformTools.makeRequireTransform("requireTransform",
-        {evaluateArguments: true},
-        function(args, opts, cb) {
-            var required = args[0];
-            for (var i = 0; i < moduleMappings.length; i++) {
-                var mapping = moduleMappings[i];
-                if (mapping.from === required) {
-                    if (mapping.require) {
-                        return cb(null, "require('" + mapping.require + "')");
-                    } else {
-                        return cb(null, "require('jenkins-modules').require('" + mapping.to + "')");
+
+    if (moduleMappings.length > 0) {
+        var requireTransform = transformTools.makeRequireTransform("requireTransform",
+            {evaluateArguments: true},
+            function(args, opts, cb) {
+                var required = args[0];
+                for (var i = 0; i < moduleMappings.length; i++) {
+                    var mapping = moduleMappings[i];
+                    if (mapping.from === required) {
+                        if (mapping.require) {
+                            return cb(null, "require('" + mapping.require + "')");
+                        } else {
+                            return cb(null, "require('jenkins-modules').require('" + mapping.to + "')");
+                        }
                     }
                 }
-            }
-            return cb();
-        });
-    var importWrapApplied = false;
-    var importWrapperTransform = transformTools.makeStringTransform("importWrapperTransform", {},
+                return cb();
+            });
+        bundler.transform(requireTransform);
+    }
+    var importExportApplied = false;
+    var importExportTransform = transformTools.makeStringTransform("importExportTransform", {},
         function (content, opts, done) {
-            if (!importWrapApplied) {
+            if (!importExportApplied) {
                 var imports = "";
                 for (var i = 0; i < moduleMappings.length; i++) {
                     var mapping = moduleMappings[i];
@@ -312,14 +318,27 @@ function addModuleMappingTransforms(bundle, bundler) {
                     imports += "'" + mapping.to + "'";
                 }
                 
+                var exportNamespace = 'undefined'; // global namespace
+                var exportModule = '{}'; // exporting nothing (an "empty" module object)
+                
                 if (bundle.bundleExportPlugin) {
+                    // It's a hpi plugin, so use it's name as the export namespace.
+                    exportNamespace = "'" + bundle.bundleExportPlugin + "'";
+                }
+                if (bundle.bundleExport) {
+                    // export function was called, so export the module.
+                    exportModule = 'module'; // export the module
+                }
+
+                // Always call export, even if the export function was not called on the builder instance.
+                // If the export function was not called, we export nothing (see above). In this case, it just 
+                // generates an event for any modules that need to sync on the load event for the module.
+                content += "\n" +
+                    "\t\trequire('jenkins-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
+
+                if (bundle.bundleExportPlugin && bundle.lessSrcPath) {
                     content += "\n" +
-                        "\t\trequire('jenkins-modules').export('" + bundle.bundleExportPlugin + "', '" + bundle.as + "', module);";
-                    
-                    if (bundle.lessSrcPath) {
-                        content += "\n" +
-                            "\t\trequire('jenkins-modules').addModuleCSSToPage('" + bundle.bundleExportPlugin + "', '" + bundle.as + "');";
-                    }
+                        "\t\trequire('jenkins-modules').addModuleCSSToPage('" + bundle.bundleExportPlugin + "', '" + bundle.as + "');";
                 }
                 
                 if (imports.length > 0) {
@@ -332,7 +351,7 @@ function addModuleMappingTransforms(bundle, bundler) {
                             "\n" +
                             "    });\n";
 
-                    importWrapApplied = true;
+                    importExportApplied = true;
                     return done(null, wrappedContent);
                 } else {
                     return done(null, content);
@@ -342,6 +361,5 @@ function addModuleMappingTransforms(bundle, bundler) {
             }
         });    
 
-    bundler.transform(requireTransform);
-    bundler.transform(importWrapperTransform);
+    bundler.transform(importExportTransform);
 }
