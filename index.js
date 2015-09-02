@@ -297,7 +297,7 @@ function addModuleMappingTransforms(bundle, bundler) {
                         if (mapping.require) {
                             return cb(null, "require('" + mapping.require + "')");
                         } else {
-                            return cb(null, "require('jenkins-modules').require('" + mapping.to + "')");
+                            return cb(null, "require('jenkins-js-modules').require('" + mapping.to + "')");
                         }
                     }
                 }
@@ -335,16 +335,16 @@ function addModuleMappingTransforms(bundle, bundler) {
                     // If the export function was not called, we export nothing (see above). In this case, it just 
                     // generates an event for any modules that need to sync on the load event for the module.
                     content += "\n" +
-                        "\t\trequire('jenkins-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
+                        "\t\trequire('jenkins-js-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
     
                     if (bundle.bundleExportPlugin && bundle.lessSrcPath) {
                         content += "\n" +
-                            "\t\trequire('jenkins-modules').addModuleCSSToPage('" + bundle.bundleExportPlugin + "', '" + bundle.as + "');";
+                            "\t\trequire('jenkins-js-modules').addModuleCSSToPage('" + bundle.bundleExportPlugin + "', '" + bundle.as + "');";
                     }
     
                     if (imports.length > 0) {
                         var wrappedContent =
-                            "require('jenkins-modules')\n" +
+                            "require('jenkins-js-modules')\n" +
                                 "    .import(" + imports + ")\n" +
                                 "    .onFulfilled(function() {\n" +
                                 "\n" +

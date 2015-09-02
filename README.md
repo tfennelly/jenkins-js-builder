@@ -70,7 +70,7 @@ file, allowing the adjunct to be referenced from a Jelly file.
 </build>
 ```
 
-Alternatively, you can generate the bundle as a `jenkins-modules` style module:
+Alternatively, you can generate the bundle as a `jenkins-js-modules` style module:
  
 ```
 builder.bundle('./index.js', 'myjenkinsmodule.js').asJenkinsModuleResource();
