@@ -1,16 +1,52 @@
+# Jenkins JS Builder
+
+__Table of Contents__:
+<p>
+<ul>
+    <a href="#overview">Overview</a><br/>
+    <a href="#features">Features</a><br/>
+    <a href="#install">Install</a><br/>
+    <a href="#general-usage">General Usage</a><br/>
+    <a href="#predefined-gulp-tasks">Predefined Gulp Tasks</a><br/>
+    <a href="#bundling">Bundling</a><br/>
+    <a href="#setting-src-and-test-spec-paths">Setting 'src' and 'test' (spec) paths</a><br/>
+    <a href="#examples">Examples</a><br/>
+    <a href="#maven-integration">Maven Integration</a><br/>
+</ul>    
+</p>
+
+<hr/>
+
 # Overview
-Utility [NPM] package for building __[jenkins-js-modules]__ bundles.
+[NPM] utility for building [CommonJS] module [bundle]s (and optionally making them __[jenkins-js-modules]__ compatible).
 
-> See __[jenkins-js-modules]__ for more.
+> See __[jenkins-js-modules]__.
 
-This package builds on a number of popular JavaScript and maven tools ([Browserify], [Gulp], [frontend-maven-plugin] and more)
-to help build [CommonJS] module bundles as described in the __[jenkins-js-modules]__  docs.
+The following diagram illustrates the basic flow (and components used) in the process of building a [CommonJS] module [bundle]. 
+It uses a number of popular JavaScript and maven tools ([CommonJS]/[node.js], [Browserify], [Gulp], [frontend-maven-plugin] and more).
 
 <p align="center">
     <a href="https://github.com/tfennelly/jenkins-js-modules" target="_blank">
-        <img src="img/build_workflow.png" alt="Jenkins Module Bundle Build Workflow">
+        <img src="res/build_workflow.png" alt="Jenkins Module Bundle Build Workflow">
     </a>
-</p>  
+</p>
+  
+The responsibilities of the components in the above diagram can be summarized as follows:
+
+* __[CommonJS]__: JavaScript module system (i.e. the expected format of JavaScript modules). This module system works with the nice/clean synchronous `require` syntax synonymous with [node.js] (for module loading) e.g. `var mathUtil = require('../util/mathUtil');`. This allows us to tap into the huge [NPM] JavaScript ecosystem.
+* __[Browserify]__: A build time utility ([NPM] package - executed as a [Gulp] "task") for "bundling" a graph of [CommonJS] style modules together, producing a single JavaScript file ([bundle]) that can be loaded (from a single request) in a browser. [Browserify] ensures that the `require` calls (see above) resolve properly to the correct module within the [bundle].
+* __[Gulp]__: A JavaScript build system ([NPM] package), analogous to what Maven is for Java i.e. executes "tasks" that eventually produce build artifacts. In this case, a JavaScript __[bundle]__ is produced via [Gulp]s execution of a [Browserify] "task".
+* __[frontend-maven-plugin]__: A Maven plugin that allows us to hook a [Gulp] "build" into a maven build e.g. for a Jenkins plugin.
+
+# Features
+`jenkins-js-builder` does a number of things:
+
+1. Run [Jasmine] tests/specs and produce a JUnit report that can be picked up by a top level Maven build.
+1. Uses [Browserify] to produce a [CommonJS] module __[bundle]__ file from a "main" [CommonJS] module (see the `bundle` task below). The [bundle] file is typically placed somewhere on the filesystem that allows a higher level Maven build to pick it up and include it in e.g. a Jenkins plugin HPI file (so it can be loaded by the browser at runtime). 
+1. Pre-process [Handlebars] files (`.hbs`) and include them in the __[bundle]__ file (see 2 above).
+1. __Optionally__ pre-process a [LESS] fileset to a `.css` file that can be picked up by the tope level Maven build and included in the e.g. a Jenkins plugin HPI file. See the `bundle` task below.
+1. __Optionally__ perform module transformations (using a [Browserify Transform](https://github.com/substack/browserify-handbook#transforms)) that "link" in [Framework lib]s (`import` - see [jenkins-js-modules]), making the [bundle] a lot lighter by allowing it to use a shared instance of the [Framework lib] Vs it being included in the [bundle]. This can easily reduce the size of a [bundle] from e.g. 1Mb to 50Kb or less, as [Framework lib]s are often the most weighty components. See the `bundle` task below.
+1. __Optionally__ `export` (see [jenkins-js-modules]) the [bundle]s "main" [CommonJS] module (see 2 above) so as to allow other [bundle]s `import` it i.e. effectively making the bundle a [Framework lib] (see 5 above). See the `bundle` task below.
 
 # Install
 
@@ -18,9 +54,13 @@ to help build [CommonJS] module bundles as described in the __[jenkins-js-module
 npm install --save-dev jenkins-js-builder
 ```
 
-# Usage
+> This assumes you have [io.js] installed on your local development environment.
 
-Add a `gulpfile.js` in the same folder as the `package.json`. Then use `jenkins-js-builder` as follows:
+> Note this is only required if you intend developing [jenkins-js-modules] compatible module bundles. Plugins using this should automatically handle all build aspects via maven (see later) i.e. __simple building of a plugin should require no machine level setup__.
+
+# General Usage
+
+Add a `gulpfile.js` (see [Gulp]) in the same folder as the `package.json`. Then use `jenkins-js-builder` as follows:
 
 ```javascript
 var builder = require('jenkins-js-builder');
@@ -42,29 +82,88 @@ __Notes__:
 so you can also just define your own tasks. To use the tasks defined in `jenkins-js-builder`, simply call
 the `defineTasks` function:
 
-```
+```javascript
 builder.defineTasks(['test', 'bundle', 'rebundle']);
 ```
 
-The following sections describe the available tasks.
+See next section.
 
-### `test` 
+
+# Predefined Gulp Tasks
+
+The following sections describe the available predefined [Gulp] tasks.
+
+## 'test' Task
 
 Run all Jasmine style tests. The default location for tests is the `spec` folder. The file names need to match the
-pattern "*-spec.js". The default location can be overridden by calling `builder.tests()`.
+pattern "*-spec.js". The default location can be overridden by calling `builder.tests(<new-path>)`.
 
-### `bundle` 
+See [jenkins-js-test] for more on testing.
 
-Create a Browserify Javascript bundle. 
-
-You can generate the bundle as a Jenkins adjunct:
+## 'bundle' Task 
+Run the 'bundle' task. See detail on this in the <a href="#bundling">dedicated section titled "Bundling"</a> (below). 
  
+## 'rebundle' Task
+
+Watch module source files (`index.js`, `./lib/**/*.js` and `./lib/**/*.hbs`) for change, auto-running the
+`bundle` task whenever changes are detected.
+
+Note that this task will not be run by default, so you need to specify it explicitly on the gulp command in
+order to run it e.g.
+
 ```
-builder.bundle('./index.js', 'myappbundle.js').inAdjunctPackage('com.acme');
+gulp rebundle
 ```
 
-This simply means the bundle is put into a package 
-in `./target/generated-adjuncts/`. That folder can then be added as a build resource in your `pom.xml`
+# Bundling
+As stated in the "Features" section above, much of the usefulness of `jenkins-js-builder` lies in how it
+helps with the bundling of the different JavaScript and CSS components:
+
+1. Bundling [CommonJS] modules to produce a JavaScript [bundle]. 
+1. Bundling [LESS] resource to produce a `.css` file. 
+1. Bundling [Handlebars] templates (`hbs`) into the JavaScript [bundle].
+ 
+It also helps with __[jenkins-js-modules]__ compatibility i.e. handling `import`s and `export`s so as to allow
+slimming down of your "app" [bundle].
+
+## Step 1: Create Bundle Spec
+Most of the bundling options are configured on the "Bundle Spec", which is an object returned from
+a call to the `bundle` function on the `builder`:
+
+```javascript
+var bundleSpec = builder.bundle('<path-to-main-module>', '<bundle-name>');
+```
+
+* `path-to-main-module`: The path to the "main" [CommonJS] module, from which [Browserify] will start the bundling process (see [Browserify] for more details). E.g. `'js/bootstrap3.js'`.  
+* `bundle-name` __(Optional)__: The name of the bundle to be generated. If not specified, the "main" module name will be used.  
+
+## Step 2: Specify Bundle Output Location
+`jenkins-js-builder` lets you configure where the generate [bundle] is output to. There are possible
+options for this.
+
+> __Option 1__: Bundle as a [jenkins-js-modules] "resource", which means it will be placed in the
+> `./src/main/webapp/jsmodules` folder, from where it can be `import`ed at runtime. So, this option
+> should be used in conjunction withe `bundleSpec.export()` (see below).
+
+```javascript
+bundleSpec.asJenkinsModuleResource();
+```
+
+> __Option 2__: Bundle in a specified directory/folder.
+
+```javascript
+bundleSpec.inDir('<path-to-dir>');
+```
+
+> __Option 3__: Bundle as an "adjunct", which means the bundle is put into a package 
+> in `./target/generated-adjuncts/`. If using this option, make sure the project's
+> `pom.xml` has the appropriate build `<resource>` configuration (see below). 
+
+```javascript
+bundleSpec.inAdjunctPackage('com.acme');
+```
+
+An example of how to configure the build `<resource>` in your `pom.xml`
 file, allowing the adjunct to be referenced from a Jelly file.
 
 ```xml
@@ -80,35 +179,128 @@ file, allowing the adjunct to be referenced from a Jelly file.
 </build>
 ```
 
-Alternatively, you can generate the bundle as a `jenkins-js-modules` style module:
- 
-```
-builder.bundle('./index.js', 'myjenkinsmodule.js').asJenkinsModuleResource();
-```
+## Step 3 (Optional): Specify LESS Processing
+Specify a [LESS] file for pre-processing to CSS:
 
-This simply means the module will be put into the `webapp` folder, making it loadable (as an external 
-"plugin module") from the browser as a plugin resource. 
- 
-### `rebundle`
-
-Watch module source files (`index.js`, `./lib/**/*.js` and `./lib/**/*.hbs`) for change, auto-running the
-`bundle` task whenever changes are detected.
-
-Note that this task will not be run by default, so you need to specify it explicitly on the gulp command in
-order to run it e.g.
-
-```
-gulp rebundle
+```javascript
+bundleSpec.less('js/bootstrap3/style.less');
 ```
 
-# Hooking into a Maven build
+The output location for the generated `.css` file depends on the output location chosen for the [bundle]. See __Step 2__ above.  
 
-__TODO__
+## Step 4 (Optional): Specify "external" Module Mappings (imports)
+Some of the [NPM] packages used by your "app" [bundle] will be common [Framework lib]s that, for performance reasons,
+you do not want bundled in every "app" [bundle]. Instead, you would prefer all "app" bundles to share an instance of
+these common [Framework lib]s.
 
+That said, you would generally prefer to code your application's [CommonJS] modules as normal, using the more 
+simple/intuitive [CommonJS] style `require` syntax (synch), and forget about performance optimizations until
+later (build time). When doing it this way, your [CommonJS] module code should just `require` the [NPM] packages it
+needs and just use them as normal e.g.
+
+```javascript
+var moment = require('moment');
+
+moment().format('MMMM Do YYYY, h:mm:ss a');
+```
+    
+The above code will work fine as is (without performing any mappings), but the downside is that your app bundle will be more bloated as it will
+include the `moment` NPM module. To lighten your bundle for the browser (by using a shared instance of the `moment`
+NPM module), we tell the `builder` (via the `bundleSpec`) to "map" (transform) all synchronous `require` calls for `moment` to async 
+`import`<sub>s</sub> of the `momentjs:momentjs2` [Framework lib] [bundle]
+([see the momentjs framwork lib bundle](https://github.com/jenkinsci/js-libs/tree/master/momentjs)).
+
+```javascript
+bundleSpec.withExternalModuleMapping('moment', 'momentjs:momentjs2');
+```
+
+Of course your "app" bundle may depend on a number of weighty [Framework lib]s that you would prefer not to
+include in your bundle. If so, simply call `withExternalModuleMapping` for each.
+
+## Step 5 (Optional): Export
+Exporting the "main" module from the [bundle] is easy:
+
+```javascript
+bundleSpec.export();
+```
+The `builder` will use the plugin's `artifactId` from the `pom.xml` (which becomes the plugin ID), as well as the
+bundle name (normalised from the bundle name specified during __Step 1__) to determine the `export` bundle ID for
+the module.
+
+For example, if the plugin's `artifactId` is "acmeplugin" and the bundle name specified is "acme.js", then the
+module would be exported as `acmeplugin:acme`. The package associated with the "acme.js" module should also be
+"published" to [NPM] so as to allow "app" bundles that might use it to add a `dev` dependency on it (so tests
+etc can run). 
+
+So how would an "app" bundle in another plugin use this later?
+
+It would need to:
+
+1. Add a normal HPI dependency on "acmeplugin" (to make sure it gets loaded by Jenkins so it can serve the bundle).
+1. Add a `dev` dependency on the package associated with the "acme.js" module i.e. `npm install --save-dev acme`. This allows the next step will work (and tests to run etc).
+1. In the "app" bundle modules, simply `require` and use the `acme` module e.g. `var acme = require('acme');`.
+1. In the "app" bundle's `gulpfile.js`, add a `withExternalModuleMapping` e.g. `bundleSpec.withExternalModuleMapping('acme', 'acmeplugin:acme');`.
+  
+See __Step 4__ above.  
+
+# Setting 'src' and 'test' (spec) paths
+The default source and test/spec paths are:
+
+* __src__: `./js`
+* __test__: `./spec`
+
+Changing these defaults is done through the `builder` instance e.g.:
+
+```javascript
+var builder = require('jenkins-js-builder');
+
+builder.src('src/main/js');
+builder.tests('src/test/js');
+```
+
+# Examples
+One source of examples for this are the [Framework lib]s. Browse the sub-projects in that repo and
+look at the [Gulp] files (`gulpfiles.js`).
+
+# Maven Integration
+Hooking a [Gulp] based build into a Maven build involves adding a few Maven `<profile>`s to the
+Maven project's `pom.xml`.
+
+We have extracted these into a [sample_extract_pom.xml](res/sample_extract_pom.xml)
+from which they can be copied.
+
+> __NOTE__: We hope to put these `<profile>` definitions into one of the top level Jenkins parent POMs. Once that's 
+> done and your project has that parent POM as a parent, then none of this will be required.
+>
+> Also, this is a bit ugly at the moment (because some manual setup is required for the `frontend-maven-plugin`), 
+> but we'll be able to remove most of that ugliness once io.js and node.js merge back together again. We'll be
+> able to move back to node.js and let the frontend-maven-plugin handle everything.
+> See https://github.com/tfennelly/jenkins-js-modules/issues/3
+
+With these `<profiles>`s installed, Maven will run [Gulp] as part of the build. 
+
+> - runs `npm install` during the `initialize` phase, 
+> - runs `gulp bundle` during the `generate-sources` phase and
+> - runs `gulp test` during the `test` phase). 
+
+You can also execute:
+
+* `mvn clean -DcleanNode`: Cleans out the local node and NPM artifacts and resource (including the `node_modules` folder).
+
+[bundle]: https://github.com/tfennelly/jenkins-js-modules/blob/master/FAQs.md#what-is-the-difference-between-a-module-and-a-bundle
 [jenkins-js-modules]: https://github.com/tfennelly/jenkins-js-modules
+[jenkins-js-test]: https://github.com/tfennelly/jenkins-js-test
 [NPM]: https://www.npmjs.com/
 [CommonJS]: http://www.commonjs.org/
 [node.js]: https://nodejs.org/en/
 [Browserify]: http://browserify.org/
 [Gulp]: http://gulpjs.com/
 [frontend-maven-plugin]: https://github.com/eirslett/frontend-maven-plugin
+[intra-bundle]: https://github.com/tfennelly/jenkins-js-modules/blob/master/FAQs.md#what-does-module-loading-mean
+[inter-bundle]: https://github.com/tfennelly/jenkins-js-modules/blob/master/FAQs.md#what-does-module-loading-mean
+[io.js]: https://iojs.org
+[Framework lib]: https://github.com/jenkinsci/js-libs
+[LESS]: http://lesscss.org/
+[Handlebars]: http://handlebarsjs.com/
+[Jasmine]: http://jasmine.github.io/
+[Moment.js]: http://momentjs.com/
