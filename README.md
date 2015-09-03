@@ -1,14 +1,24 @@
 # Overview
+Utility [NPM] package for building __[jenkins-js-modules]__ bundles.
 
-Builder utilities for Jenkins CommonJS modules.
+> See __[jenkins-js-modules]__ for more.
 
-## Install
+This package builds on a number of popular JavaScript and maven tools ([Browserify], [Gulp], [frontend-maven-plugin] and more)
+to help build [CommonJS] module bundles as described in the __[jenkins-js-modules]__  docs.
+
+<p align="center">
+    <a href="https://github.com/tfennelly/jenkins-js-modules" target="_blank">
+        <img src="img/build_workflow.png" alt="Jenkins Module Bundle Build Workflow">
+    </a>
+</p>  
+
+# Install
 
 ```
 npm install --save-dev jenkins-js-builder
 ```
 
-## Usage
+# Usage
 
 Add a `gulpfile.js` in the same folder as the `package.json`. Then use `jenkins-js-builder` as follows:
 
@@ -79,7 +89,7 @@ builder.bundle('./index.js', 'myjenkinsmodule.js').asJenkinsModuleResource();
 This simply means the module will be put into the `webapp` folder, making it loadable (as an external 
 "plugin module") from the browser as a plugin resource. 
  
-## `rebundle`
+### `rebundle`
 
 Watch module source files (`index.js`, `./lib/**/*.js` and `./lib/**/*.hbs`) for change, auto-running the
 `bundle` task whenever changes are detected.
@@ -90,3 +100,15 @@ order to run it e.g.
 ```
 gulp rebundle
 ```
+
+# Hooking into a Maven build
+
+__TODO__
+
+[jenkins-js-modules]: https://github.com/tfennelly/jenkins-js-modules
+[NPM]: https://www.npmjs.com/
+[CommonJS]: http://www.commonjs.org/
+[node.js]: https://nodejs.org/en/
+[Browserify]: http://browserify.org/
+[Gulp]: http://gulpjs.com/
+[frontend-maven-plugin]: https://github.com/eirslett/frontend-maven-plugin
