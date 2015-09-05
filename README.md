@@ -10,8 +10,8 @@ __Table of Contents__:
     <a href="#predefined-gulp-tasks">Predefined Gulp Tasks</a><br/>
     <a href="#bundling">Bundling</a><br/>
     <a href="#setting-src-and-test-spec-paths">Setting 'src' and 'test' (spec) paths</a><br/>
-    <a href="#examples">Examples</a><br/>
     <a href="#maven-integration">Maven Integration</a><br/>
+    <a href="#examples">Examples</a><br/>
 </ul>    
 </p>
 
@@ -36,15 +36,15 @@ The responsibilities of the components in the above diagram can be summarized as
 * __[CommonJS]__: JavaScript module system (i.e. the expected format of JavaScript modules). This module system works with the nice/clean synchronous `require` syntax synonymous with [node.js] (for module loading) e.g. `var mathUtil = require('../util/mathUtil');`. This allows us to tap into the huge [NPM] JavaScript ecosystem.
 * __[Browserify]__: A build time utility ([NPM] package - executed as a [Gulp] "task") for "bundling" a graph of [CommonJS] style modules together, producing a single JavaScript file ([bundle]) that can be loaded (from a single request) in a browser. [Browserify] ensures that the `require` calls (see above) resolve properly to the correct module within the [bundle].
 * __[Gulp]__: A JavaScript build system ([NPM] package), analogous to what Maven is for Java i.e. executes "tasks" that eventually produce build artifacts. In this case, a JavaScript __[bundle]__ is produced via [Gulp]s execution of a [Browserify] "task".
-* __[frontend-maven-plugin]__: A Maven plugin that allows us to hook a [Gulp] "build" into a maven build e.g. for a Jenkins plugin.
+* __[frontend-maven-plugin]__: A Maven plugin that allows us to hook a [Gulp] "build" into a maven build e.g. for a Jenkins plugin. See <a href="#maven-integration">Maven Integration</a> below.
 
 # Features
 `jenkins-js-builder` does a number of things:
 
-1. Run [Jasmine] tests/specs and produce a JUnit report that can be picked up by a top level Maven build.
+1. Runs [Jasmine] tests/specs and produce a JUnit report that can be picked up by a top level Maven build.
 1. Uses [Browserify] to produce a [CommonJS] module __[bundle]__ file from a "main" [CommonJS] module (see the `bundle` task below). The [bundle] file is typically placed somewhere on the filesystem that allows a higher level Maven build to pick it up and include it in e.g. a Jenkins plugin HPI file (so it can be loaded by the browser at runtime). 
 1. Pre-process [Handlebars] files (`.hbs`) and include them in the __[bundle]__ file (see 2 above).
-1. __Optionally__ pre-process a [LESS] fileset to a `.css` file that can be picked up by the tope level Maven build and included in the e.g. a Jenkins plugin HPI file. See the `bundle` task below.
+1. __Optionally__ pre-process a [LESS] fileset to a `.css` file that can be picked up by the top level Maven build and included in the e.g. a Jenkins plugin HPI file. See the `bundle` task below.
 1. __Optionally__ perform module transformations (using a [Browserify Transform](https://github.com/substack/browserify-handbook#transforms)) that "link" in [Framework lib]s (`import` - see [jenkins-js-modules]), making the [bundle] a lot lighter by allowing it to use a shared instance of the [Framework lib] Vs it being included in the [bundle]. This can easily reduce the size of a [bundle] from e.g. 1Mb to 50Kb or less, as [Framework lib]s are often the most weighty components. See the `bundle` task below.
 1. __Optionally__ `export` (see [jenkins-js-modules]) the [bundle]s "main" [CommonJS] module (see 2 above) so as to allow other [bundle]s `import` it i.e. effectively making the bundle a [Framework lib] (see 5 above). See the `bundle` task below.
 
@@ -138,11 +138,11 @@ var bundleSpec = builder.bundle('<path-to-main-module>', '<bundle-name>');
 * `bundle-name` __(Optional)__: The name of the bundle to be generated. If not specified, the "main" module name will be used.  
 
 ## Step 2: Specify Bundle Output Location
-`jenkins-js-builder` lets you configure where the generate [bundle] is output to. There are possible
+`jenkins-js-builder` lets you configure where the generate [bundle] is output to. There are 3 possible
 options for this.
 
 > __Option 1__: Bundle as a [jenkins-js-modules] "resource", which means it will be placed in the
-> `./src/main/webapp/jsmodules` folder, from where it can be `import`ed at runtime. So, this option
+> `./src/main/webapp/jsmodules` folder, from where it can be `import`ed at runtime. This option
 > should be used in conjunction withe `bundleSpec.export()` (see below).
 
 ```javascript
@@ -164,7 +164,7 @@ bundleSpec.inAdjunctPackage('com.acme');
 ```
 
 An example of how to configure the build `<resource>` in your `pom.xml`
-file, allowing the adjunct to be referenced from a Jelly file.
+file (if using `inAdjunctPackage`), allowing the adjunct to be referenced from a Jelly file.
 
 ```xml
 <build>
@@ -218,7 +218,7 @@ Of course your "app" bundle may depend on a number of weighty [Framework lib]s t
 include in your bundle. If so, simply call `withExternalModuleMapping` for each.
 
 ## Step 5 (Optional): Export
-Exporting the "main" module from the [bundle] is easy:
+Exporting the "main" module (allowing other bundle modules to `import` it) from the [bundle] is easy:
 
 ```javascript
 bundleSpec.export();
@@ -258,10 +258,6 @@ builder.src('src/main/js');
 builder.tests('src/test/js');
 ```
 
-# Examples
-One source of examples for this are the [Framework lib]s. Browse the sub-projects in that repo and
-look at the [Gulp] files (`gulpfiles.js`).
-
 # Maven Integration
 Hooking a [Gulp] based build into a Maven build involves adding a few Maven `<profile>`s to the
 Maven project's `pom.xml`.
@@ -286,6 +282,10 @@ With these `<profiles>`s installed, Maven will run [Gulp] as part of the build.
 You can also execute:
 
 * `mvn clean -DcleanNode`: Cleans out the local node and NPM artifacts and resource (including the `node_modules` folder).
+
+# Examples
+One source of examples for this are the [Framework lib]s. Browse the sub-projects in that repo and
+look at the [Gulp] files (`gulpfiles.js`).
 
 [bundle]: https://github.com/tfennelly/jenkins-js-modules/blob/master/FAQs.md#what-is-the-difference-between-a-module-and-a-bundle
 [jenkins-js-modules]: https://github.com/tfennelly/jenkins-js-modules
