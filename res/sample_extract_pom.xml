@@ -238,7 +238,7 @@
                                 <goals>
                                     <goal>gulp</goal>
                                 </goals>
-                                <configuration><arguments>test</arguments></configuration>
+                                <configuration><arguments>bundle test</arguments></configuration>
                             </execution>
     
                         </executions>
