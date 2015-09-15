@@ -54,7 +54,7 @@ The responsibilities of the components in the above diagram can be summarized as
 npm install --save-dev jenkins-js-builder
 ```
 
-> This assumes you have [io.js] installed on your local development environment.
+> This assumes you have [node.js] v4.0.0 (minimum) installed on your local development environment.
 
 > Note this is only required if you intend developing [jenkins-js-modules] compatible module bundles. Plugins using this should automatically handle all build aspects via maven (see later) i.e. __simple building of a plugin should require no machine level setup__.
 
@@ -271,11 +271,6 @@ from which they can be copied.
 
 > __NOTE__: We hope to put these `<profile>` definitions into one of the top level Jenkins parent POMs. Once that's 
 > done and your project has that parent POM as a parent, then none of this will be required.
->
-> Also, this is a bit ugly at the moment (because some manual setup is required for the `frontend-maven-plugin`), 
-> but we'll be able to remove most of that ugliness once io.js and node.js merge back together again. We'll be
-> able to move back to node.js and let the frontend-maven-plugin handle everything.
-> See https://github.com/tfennelly/jenkins-js-modules/issues/3
 
 With these `<profiles>`s installed, Maven will run [Gulp] as part of the build. 
 
