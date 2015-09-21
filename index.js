@@ -16,6 +16,7 @@ var srcPath = './js';
 var testSrcPath = './spec';
 
 exports.gulp = gulp;
+exports.browserify = browserify;
 
 exports.defineTasks = function(tasknames) {
     if (!tasknames) {
@@ -181,6 +182,13 @@ exports.logError = function(message) {
     gutil.log(gutil.colors.red(message));
 }
 
+exports.less = function(src, targetDir) {
+    var less = require('gulp-less');
+    gulp.src(src)
+        .pipe(less())
+        .pipe(gulp.dest(targetDir));
+}
+
 var tasks = {
     test: function () {
         if (!testSrcPath) {
@@ -230,7 +238,6 @@ var tasks = {
             }
     
             if (bundle.lessSrcPath) {
-                var less = require('gulp-less');
                 var lessBundleTo = bundleTo;
                 
                 if (bundle.bundleAsJenkinsModule) {
@@ -239,9 +246,7 @@ var tasks = {
                     lessBundleTo += '/' + bundle.as;
                 }
                 
-                gulp.src(bundle.lessSrcPath)
-                    .pipe(less())
-                    .pipe(gulp.dest(lessBundleTo));
+                exports.less(bundle.lessSrcPath, lessBundleTo);
             }
             
             var fileToBundle = bundle.bundleModule;
