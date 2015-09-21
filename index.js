@@ -148,8 +148,11 @@ exports.bundle = function(moduleToBundle, as) {
         
         return bundle;
     };            
-    bundle.less = function(path) {
-        bundle.lessSrcPath = path;
+    bundle.less = function(src, targetDir) {
+        bundle.lessSrcPath = src;
+        if (targetDir) {
+            bundle.lessTargetDir = targetDir;
+        }
         return bundle;
     };
     bundle.export = function() {
@@ -180,13 +183,6 @@ exports.logWarn = function(message) {
 }
 exports.logError = function(message) {
     gutil.log(gutil.colors.red(message));
-}
-
-exports.less = function(src, targetDir) {
-    var less = require('gulp-less');
-    gulp.src(src)
-        .pipe(less())
-        .pipe(gulp.dest(targetDir));
 }
 
 var tasks = {
@@ -244,9 +240,11 @@ var tasks = {
                     // If it's a jenkins module, the CSS etc need to go into a folder under jsmodulesBasePath
                     // and the name of the folder must be the module name
                     lessBundleTo += '/' + bundle.as;
+                } else if (bundle.lessTargetDir) {
+                    lessBundleTo = bundle.lessTargetDir;
                 }
                 
-                exports.less(bundle.lessSrcPath, lessBundleTo);
+                less(bundle.lessSrcPath, lessBundleTo);
             }
             
             var fileToBundle = bundle.bundleModule;
@@ -370,4 +368,11 @@ function addModuleMappingTransforms(bundle, bundler) {
         });    
 
     bundler.transform(importExportTransform);
+}
+
+function less(src, targetDir) {
+    var less = require('gulp-less');
+    gulp.src(src)
+        .pipe(less())
+        .pipe(gulp.dest(targetDir));
 }
