@@ -148,10 +148,10 @@ exports.bundle = function(moduleToBundle, as) {
         
         return bundle;
     };            
-    bundle.less = function(src, targetDir) {
+    bundle.less = function(src, target) {
         bundle.lessSrcPath = src;
-        if (targetDir) {
-            bundle.lessTargetDir = targetDir;
+        if (target) {
+            bundle.lessTargetPath = target;
         }
         return bundle;
     };
@@ -240,8 +240,8 @@ var tasks = {
                     // If it's a jenkins module, the CSS etc need to go into a folder under jsmodulesBasePath
                     // and the name of the folder must be the module name
                     lessBundleTo += '/' + bundle.as;
-                } else if (bundle.lessTargetDir) {
-                    lessBundleTo = bundle.lessTargetDir;
+                } else if (bundle.lessTargetPath) {
+                    lessBundleTo = bundle.lessTargetPath;
                 }
                 
                 less(bundle.lessSrcPath, lessBundleTo);
