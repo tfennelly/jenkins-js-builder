@@ -6,14 +6,28 @@ var browserify = require('browserify');
 var source = require('vinyl-source-stream');
 var transformTools = require('browserify-transform-tools');
 var _string = require('underscore.string');
+var fs = require('fs');
+
+var cwd = process.cwd();
+var isMavenBuild = fs.existsSync(cwd + '/pom.xml');
 
 var bundles = []; // see exports.bundle function
 
 var adjunctBasePath = './target/generated-adjuncts/';
 var jsmodulesBasePath = './src/main/webapp/jsmodules/';
 
-var srcPath = './js';
-var testSrcPath = './spec';
+var srcPaths;
+var testSrcPath;
+if (isMavenBuild) {
+    gutil.log(gutil.colors.green("Maven project"));
+    srcPaths = ['src/main/js','src/main/less'];
+    testSrcPath = 'src/test/js';    
+} else {
+    srcPaths = ['./js', './less'];
+    testSrcPath = './spec';    
+}
+gutil.log(gutil.colors.green(" - src: " + srcPaths));
+gutil.log(gutil.colors.green(" - test: " + testSrcPath));
 
 exports.gulp = gulp;
 exports.browserify = browserify;
@@ -33,7 +47,7 @@ exports.defineTasks = function(tasknames) {
             throw "Unknown gulp task '" + taskname + "'.";
         }
         
-        gulp.task(taskname, gulpTask);
+        exports.defineTask(taskname, gulpTask);
         if (taskname === 'test' || taskname === 'bundle') {
             defaults.push(taskname);
         }
@@ -45,11 +59,28 @@ exports.defineTasks = function(tasknames) {
     }    
 };
 
-exports.src = function(path) {
-    if (path) {
-        srcPath = normalizePath(path);
+exports.defineTask = function(taskname, gulpTask) {
+    if (taskname === 'test') {
+        // Want to make sure the 'bundle' task gets run with the 'test' task.
+        gulp.task('appTest', gulpTask);
+        gulp.task('test', ['bundle', 'appTest']);
+    } else {
+        gulp.task(taskname, gulpTask);
     }
-    return srcPath;
+};
+
+exports.src = function(paths) {
+    if (paths) {
+        srcPaths = [];
+        if (typeof paths === 'string') {
+            srcPaths.push(normalizePath(paths));
+        } else if (paths.constructor === Array) {
+            for (var i = 0; i < paths.length; i++) {
+                srcPaths.push(normalizePath(paths[i]));
+            }
+        }
+    }
+    return srcPaths;
 };
 
 exports.tests = function(path) {
@@ -105,7 +136,7 @@ exports.bundle = function(moduleToBundle, as) {
         }
         assertBundleOutputUndefined();
         bundle.bundleToAdjunctPackageDir = packageToPath(packageName);
-        gutil.log("Bundle will be generated as an adjunct in '" + adjunctBasePath + "' as '" + packageName + "." + bundle.as + "' (it's a .js file).");
+        gutil.log(gutil.colors.green("Bundle will be generated as an adjunct in '" + adjunctBasePath + "' as '" + packageName + "." + bundle.as + "' (it's a .js file)."));
         return bundle;
     };
     bundle.inDir = function(dir) {
@@ -115,13 +146,13 @@ exports.bundle = function(moduleToBundle, as) {
         }
         assertBundleOutputUndefined();
         bundle.bundleInDir = normalizePath(dir);
-        gutil.log("Bundle will be generated in directory '" + bundle.bundleInDir + "' as '" + bundle.js + "'.");
+        gutil.log(gutil.colors.green("Bundle will be generated in directory '" + bundle.bundleInDir + "' as '" + bundle.js + "'."));
         return bundle;
     };
     bundle.asJenkinsModuleResource = function() {
         assertBundleOutputUndefined();
         bundle.bundleAsJenkinsModule = true;
-        gutil.log("Bundle will be generated as a Jenkins Module in '" + jsmodulesBasePath + "' as '" + bundle.as + "'.");            
+        gutil.log(gutil.colors.green("Bundle will be generated as a Jenkins Module in '" + jsmodulesBasePath + "' as '" + bundle.as + "'."));            
         return bundle;
     };
     bundle.withTransforms = function(transforms) {
@@ -155,19 +186,25 @@ exports.bundle = function(moduleToBundle, as) {
         }
         return bundle;
     };
-    bundle.export = function() {
-        var fs = require('fs');
-        var xmlParser = require('xml2js').parseString;
-        var pomXML = fs.readFileSync('pom.xml', "utf-8");
-        
-        bundle.bundleExport = true;
-        xmlParser(pomXML, function (err, pom) {
-            if (pom.project.packaging[0] === 'hpi') {
-                // It's a jenkins plugin (hpi), so capture the name of the plugin.
-                // This will be used later for the export namespace.
-                bundle.bundleExportPlugin = pom.project.artifactId[0];
-            }
-        });                
+    bundle.export = function(bundleId) {
+        if (bundleId) {
+            bundle.bundleExport = true;
+            bundle.bundleExportPlugin = bundleId;
+        } else if (isMavenBuild) {
+            var xmlParser = require('xml2js').parseString;
+            var pomXML = fs.readFileSync('pom.xml', "utf-8");
+
+            bundle.bundleExport = true;
+            xmlParser(pomXML, function (err, pom) {
+                if (pom.project.packaging[0] === 'hpi') {
+                    // It's a jenkins plugin (hpi), so capture the name of the plugin.
+                    // This will be used later for the export namespace.
+                    bundle.bundleExportPlugin = pom.project.artifactId[0];
+                }
+            });
+        } else {
+            gutil.log(gutil.colors.red("Error: This is not a maven project. You must define a 'bundleId' argument to the 'export' call."));
+        }
     }
     
     bundles.push(bundle);
@@ -250,8 +287,6 @@ var tasks = {
             var fileToBundle = bundle.bundleModule;
             if (bundle.bundleDependencyModule) {
                 // Lets generate a temp file containing the module require.
-                var fs = require('fs');
-                
                 if (!fs.existsSync('target')) {
                     fs.mkdirSync('target');
                 }
@@ -282,7 +317,16 @@ var tasks = {
         }
     },
     rebundle: function() {
-        gulp.watch(['./index.js', srcPath + '/**/*.js', srcPath + '/**/*.hbs'], ['bundle']);
+        var watchList = [];
+
+        watchList.push('./index.js');
+        for (var i = 0; i < srcPaths.length; i++) {
+            var srcPath = srcPaths[i];
+            watchList.push(srcPath + '/**/*.*');
+        }
+        gutil.log('rebundle watch list: ' + watchList);
+        
+        gulp.watch(watchList, ['bundle']);
     }
 };
 
@@ -376,3 +420,6 @@ function less(src, targetDir) {
         .pipe(less())
         .pipe(gulp.dest(targetDir));
 }
+
+// Defined default tasks. Can be overridden.
+exports.defineTasks(['test', 'bundle', 'rebundle']);

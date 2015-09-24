@@ -91,7 +91,8 @@ See next section.
 
 # Predefined Gulp Tasks
 
-The following sections describe the available predefined [Gulp] tasks.
+The following sections describe the available predefined [Gulp] tasks. The `bundle` and `test` tasks are
+auto-installed as the default tasks.
 
 ## 'test' Task
 
@@ -248,10 +249,19 @@ It would need to:
 See __Step 4__ above.  
 
 # Setting 'src' and 'test' (spec) paths
-The default source and test/spec paths are:
+The default paths depend on whether or not running in a maven project.
 
-* __src__: `./js`
-* __test__: `./spec`
+For a maven project, the default source and test/spec paths are:
+
+* __src__: `./src/main/js` and `./src/main/less` (used primarily by the `rebundle` task, watching these folders for source changes)
+* __test__: `./src/test/js` (used by the `test` task)
+
+Otherwise, they are:
+
+* __src__: `./js` and `./less` (used primarily by the `rebundle` task, watching these folders for source changes)
+* __test__: `./spec` (used by the `test` task)
+
+
 
 Changing these defaults is done through the `builder` instance e.g.:
 
@@ -260,6 +270,12 @@ var builder = require('jenkins-js-builder');
 
 builder.src('src/main/js');
 builder.tests('src/test/js');
+```
+
+You can also specify an array of `src` folders e.g.
+
+```javascript
+builder.src(['src/main/js', 'src/main/less']);
 ```
 
 # Maven Integration
