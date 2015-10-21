@@ -48,7 +48,7 @@ exports.defineTasks = function(tasknames) {
         }
         
         exports.defineTask(taskname, gulpTask);
-        if (taskname === 'test' || taskname === 'bundle') {
+        if (taskname === 'jshint' || taskname === 'test' || taskname === 'bundle') {
             defaults.push(taskname);
         }
     }
@@ -327,6 +327,26 @@ var tasks = {
         gutil.log('rebundle watch list: ' + watchList);
         
         gulp.watch(watchList, ['bundle']);
+    },
+    jshint: function() {
+        var jshint = require('gulp-jshint');
+        var hasJsHintConfig = fs.existsSync(cwd + '/.jshintrc');
+        var jshintConfig;
+        
+        if (!hasJsHintConfig) {
+            gutil.log('\t- Using default JSHint configuration (in jenkins-js-builder). Override by defining a .jshintrc in this folder.');
+            jshintConfig = require('./res/default.jshintrc');
+        }        
+        function runJsHint(pathSet) {
+            for (var i = 0; i < pathSet.length; i++) {
+                gulp.src(pathSet[i] + '/**/*.js')
+                    .pipe(jshint(jshintConfig))
+                    .pipe(jshint.reporter('default'))
+                    .pipe(jshint.reporter('fail'));
+            }
+        }
+        runJsHint(srcPaths);
+        runJsHint([testSrcPath]);        
     }
 };
 
@@ -422,4 +442,4 @@ function less(src, targetDir) {
 }
 
 // Defined default tasks. Can be overridden.
-exports.defineTasks(['test', 'bundle', 'rebundle']);
+exports.defineTasks(['jshint', 'test', 'bundle', 'rebundle']);
