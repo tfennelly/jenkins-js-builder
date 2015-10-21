@@ -73,6 +73,56 @@
             </build>
         </profile>
         <profile>
+            <id>node-npm-check</id>
+            <activation>
+                <file>
+                    <exists>package.json</exists>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>1.8</version>
+                        <executions>
+                            <execution>
+                                <id>check.for.node</id>
+                                <phase>initialize</phase>
+                                <configuration>
+                                    <target name="check.for.node">
+                                        <condition property="node.installed" value="true" else="false">
+                                            <resourceexists><file file="node/node-v${node.version}-installed" /></resourceexists>
+                                        </condition>                                    
+                                    </target>
+                                    <exportAntProperties>true</exportAntProperties>
+                                </configuration>
+                                <goals><goal>run</goal></goals>
+                            </execution>
+                            <execution>
+                                <id>install</id>
+                                <phase>initialize</phase>
+                                <configuration>
+                                    <target name="install" unless="${node.installed}">
+                                        <!-- 
+                                        Reset everything
+                                        -->
+                                        <delete dir="node"/>
+                                        <delete dir="node_modules"/>
+                                        <mkdir dir="node"/>
+                                        
+                                        <!-- Create a version based installation marker file. Used in "check.for.node" execution (above). -->
+                                        <touch file="node/node-v${node.version}-installed" />
+                                    </target>
+                                </configuration>
+                                <goals><goal>run</goal></goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
             <id>gulp-execution</id>
             <activation>
                 <file>
@@ -118,7 +168,7 @@
                                     <nodeVersion>v${node.version}</nodeVersion>
                                     <npmVersion>${npm.version}</npmVersion>
                                     <!-- Use the pre-download node and npm packages. See download-maven-plugin config above. -->
-                                    <downloadRoot>file:${project.build.directory}/frontend/</downloadRoot>
+                                    <downloadRoot>${project.baseUri}target/frontend/</downloadRoot>
                                 </configuration>
                             </execution>
 
