@@ -90,6 +90,11 @@ exports.tests = function(path) {
     return testSrcPath;
 };
 
+exports.startTestWebServer = function() {
+    _startTestWebServer();
+    exports.logInfo("\t(call require('gulp').emit('testing_completed') when testing is completed - watch async test execution)");
+};
+
 function normalizePath(path) {
     path = _string.ltrim(path, './')
     path = _string.ltrim(path, '/')
@@ -213,7 +218,7 @@ exports.bundle = function(moduleToBundle, as) {
 };
 
 exports.logInfo = function(message) {
-    gutil.log(message);
+    gutil.log(gutil.colors.green(message));
 }
 exports.logWarn = function(message) {
     gutil.log(gutil.colors.orange(message));
@@ -225,7 +230,7 @@ exports.logError = function(message) {
 var tasks = {
     test: function () {
         if (!testSrcPath) {
-            gutil.log(gutil.colors.orange("Warn: Test src path has been unset. No tests to run."));
+            exports.logWarn("Warn: Test src path has been unset. No tests to run.");
             return;
         }
         
@@ -241,14 +246,19 @@ var tasks = {
         });
 
         var testSpecs = testSrcPath + '/**/*-spec.js';
-
+        
         global.jenkinsBuilder = exports;
+        _startTestWebServer();
         gulp.src(testSpecs)
-            .pipe(jasmine({reporter: [terminalReporter, junitReporter]}));
+            .pipe(jasmine({reporter: [terminalReporter, junitReporter, {
+                jasmineDone: function () {
+                    gulp.emit('testing_completed');
+                }                
+            }]}));
     },
     bundle: function() {
         if (bundles.length === 0) {
-            gutil.log(gutil.colors.red("Error: Cannot perform 'bundle' task. No 'module' bundles are registered. You must call require('jenkins-js-build').bundle([module]) in gulpfile.js, specifying at least one bundle 'module'."));
+            exports.logError("Error: Cannot perform 'bundle' task. No 'module' bundles are registered. You must call require('jenkins-js-build').bundle([module]) in gulpfile.js, specifying at least one bundle 'module'.");
             throw "'bundle' task failed. See error above.";
         }
         
@@ -257,7 +267,7 @@ var tasks = {
             var bundle = bundles[i];
             
             if (!bundle.bundleToAdjunctPackageDir && !bundle.bundleAsJenkinsModule && !bundle.bundleInDir) {
-                gutil.log(gutil.colors.red("Error: Cannot perform 'bundle' task. No bundle output spec defined. You must call 'inAdjunctPackage([adjunct-package-name])' or 'asJenkinsModuleResource' or 'inDir([dir])' on the response return from the call to 'bundle'."));
+                exports.logError("Error: Cannot perform 'bundle' task. No bundle output spec defined. You must call 'inAdjunctPackage([adjunct-package-name])' or 'asJenkinsModuleResource' or 'inDir([dir])' on the response return from the call to 'bundle'.");
                 throw "'bundle' task failed. See error above.";
             }
     
@@ -324,7 +334,7 @@ var tasks = {
             var srcPath = srcPaths[i];
             watchList.push(srcPath + '/**/*.*');
         }
-        gutil.log('rebundle watch list: ' + watchList);
+        exports.logInfo('rebundle watch list: ' + watchList);
         
         gulp.watch(watchList, ['bundle']);
     },
@@ -334,7 +344,7 @@ var tasks = {
         var jshintConfig;
         
         if (!hasJsHintConfig) {
-            gutil.log('\t- Using default JSHint configuration (in jenkins-js-builder). Override by defining a .jshintrc in this folder.');
+            exports.logInfo('\t- Using default JSHint configuration (in jenkins-js-builder). Override by defining a .jshintrc in this folder.');
             jshintConfig = require('./res/default.jshintrc');
         }        
         function runJsHint(pathSet) {
@@ -440,6 +450,25 @@ function less(src, targetDir) {
         .pipe(less())
         .pipe(gulp.dest(targetDir));
 }
+
+var testWebServer;
+function _startTestWebServer() {
+    if (!testWebServer) {
+        // Start a web server that will allow tests to request resources.
+        testWebServer = require('node-http-server').deploy({
+            port: 18999,
+            root: './'
+        });
+        exports.logInfo('Testing web server started on port 18999 (http://localhost:18999). Content root: ' + cwd);
+    }
+}
+gulp.on('testing_completed', function(x) {
+    if (testWebServer) {
+        testWebServer.close();
+        testWebServer = undefined;
+        exports.logInfo('Testing web server stopped.');
+    }
+});
 
 // Defined default tasks. Can be overridden.
 exports.defineTasks(['jshint', 'test', 'bundle', 'rebundle']);
