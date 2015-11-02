@@ -7,6 +7,7 @@ var source = require('vinyl-source-stream');
 var transformTools = require('browserify-transform-tools');
 var _string = require('underscore.string');
 var fs = require('fs');
+var testWebServer;
 
 var cwd = process.cwd();
 var isMavenBuild = fs.existsSync(cwd + '/pom.xml');
@@ -90,9 +91,26 @@ exports.tests = function(path) {
     return testSrcPath;
 };
 
-exports.startTestWebServer = function() {
-    _startTestWebServer();
+exports.startTestWebServer = function(config) {
+    _stopTestWebServer();
+    _startTestWebServer(config);
     exports.logInfo("\t(call require('gulp').emit('testing_completed') when testing is completed - watch async test execution)");
+};
+
+exports.onTaskStart = function(taskName, callback) {
+    gulp.on('task_start', function(event) {
+        if (event.task === taskName) {
+            callback();
+        }
+    });
+};
+
+exports.onTaskEnd = function(taskName, callback) {
+    gulp.on('task_end', function(event) {
+        if (event.task === taskName) {
+            callback();
+        }
+    });
 };
 
 function normalizePath(path) {
@@ -451,15 +469,21 @@ function less(src, targetDir) {
         .pipe(gulp.dest(targetDir));
 }
 
-var testWebServer;
-function _startTestWebServer() {
+function _startTestWebServer(config) {
+    if (!config) {
+        config = {}
+    }
+    if (!config.port) {
+        config.port = 18999;
+    }
+    if (!config.root) {
+        config.root = cwd;
+    }
+    
     if (!testWebServer) {
         // Start a web server that will allow tests to request resources.
-        testWebServer = require('node-http-server').deploy({
-            port: 18999,
-            root: './'
-        });
-        exports.logInfo('Testing web server started on port 18999 (http://localhost:18999). Content root: ' + cwd);
+        testWebServer = require('node-http-server').deploy(config);
+        exports.logInfo('Testing web server started on port ' + config.port + ' (http://localhost:' + config.port + '). Content root: ' + config.root);
     }
 }
 gulp.on('testing_completed', function(x) {
@@ -469,6 +493,14 @@ gulp.on('testing_completed', function(x) {
         exports.logInfo('Testing web server stopped.');
     }
 });
+
+function _stopTestWebServer() {
+    if (testWebServer) {
+        testWebServer.close();
+        testWebServer = undefined;
+        exports.logInfo('Testing web server stopped.');
+    }
+}
 
 // Defined default tasks. Can be overridden.
 exports.defineTasks(['jshint', 'test', 'bundle', 'rebundle']);
