@@ -350,6 +350,7 @@ var tasks = {
         watchList.push('./index.js');
         for (var i = 0; i < srcPaths.length; i++) {
             var srcPath = srcPaths[i];
+            watchList.push(srcPath + '/*.*');
             watchList.push(srcPath + '/**/*.*');
         }
         exports.logInfo('rebundle watch list: ' + watchList);
