@@ -1,3 +1,1 @@
-var builder = require('./index.js');
-
-builder.defineTasks();
+require('./index.js');

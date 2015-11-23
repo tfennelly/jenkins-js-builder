@@ -209,10 +209,10 @@ exports.bundle = function(moduleToBundle, as) {
         }
         return bundle;
     };
-    bundle.export = function(bundleId) {
-        if (bundleId) {
+    bundle.export = function(toNamespace) {
+        if (toNamespace) {
             bundle.bundleExport = true;
-            bundle.bundleExportPlugin = bundleId;
+            bundle.bundleExportNamespace = toNamespace;
         } else if (isMavenBuild) {
             var xmlParser = require('xml2js').parseString;
             var pomXML = fs.readFileSync('pom.xml', "utf-8");
@@ -222,11 +222,11 @@ exports.bundle = function(moduleToBundle, as) {
                 if (pom.project.packaging[0] === 'hpi') {
                     // It's a jenkins plugin (hpi), so capture the name of the plugin.
                     // This will be used later for the export namespace.
-                    bundle.bundleExportPlugin = pom.project.artifactId[0];
+                    bundle.bundleExportNamespace = pom.project.artifactId[0];
                 }
             });
         } else {
-            gutil.log(gutil.colors.red("Error: This is not a maven project. You must define a 'bundleId' argument to the 'export' call."));
+            gutil.log(gutil.colors.red("Error: This is not a maven project. You must define a 'toNamespace' argument to the 'export' call."));
         }
     }
     
@@ -239,7 +239,7 @@ exports.logInfo = function(message) {
     gutil.log(gutil.colors.green(message));
 }
 exports.logWarn = function(message) {
-    gutil.log(gutil.colors.orange(message));
+    gutil.log(gutil.colors.magenta(message));
 }
 exports.logError = function(message) {
     gutil.log(gutil.colors.red(message));
@@ -276,8 +276,8 @@ var tasks = {
     },
     bundle: function() {
         if (bundles.length === 0) {
-            exports.logError("Error: Cannot perform 'bundle' task. No 'module' bundles are registered. You must call require('jenkins-js-build').bundle([module]) in gulpfile.js, specifying at least one bundle 'module'.");
-            throw "'bundle' task failed. See error above.";
+            exports.logWarn("Warning: Skipping 'bundle' task. No 'module' bundles are registered. Call require('jenkins-js-build').bundle([module]) in gulpfile.js.");
+            return;
         }
         
         // Bundle all bundles.
@@ -418,28 +418,29 @@ function addModuleMappingTransforms(bundle, bundler) {
                     var exportNamespace = 'undefined'; // global namespace
                     var exportModule = '{}'; // exporting nothing (an "empty" module object)
     
-                    if (bundle.bundleExportPlugin) {
+                    if (bundle.bundleExportNamespace) {
                         // It's a hpi plugin, so use it's name as the export namespace.
-                        exportNamespace = "'" + bundle.bundleExportPlugin + "'";
+                        exportNamespace = "'" + bundle.bundleExportNamespace + "'";
                     }
                     if (bundle.bundleExport) {
                         // export function was called, so export the module.
                         exportModule = 'module'; // export the module
                     }
-    
+
                     // Always call export, even if the export function was not called on the builder instance.
                     // If the export function was not called, we export nothing (see above). In this case, it just 
                     // generates an event for any modules that need to sync on the load event for the module.
                     content += "\n" +
                         "\t\trequire('jenkins-js-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
     
-                    if (bundle.bundleExportPlugin && bundle.lessSrcPath) {
+                    if (bundle.bundleExportNamespace && bundle.lessSrcPath) {
                         content += "\n" +
-                            "\t\trequire('jenkins-js-modules').addModuleCSSToPage('" + bundle.bundleExportPlugin + "', '" + bundle.as + "');";
+                            "\t\trequire('jenkins-js-modules').addModuleCSSToPage('" + bundle.bundleExportNamespace + "', '" + bundle.as + "');";
                     }
     
                     if (imports.length > 0) {
                         var wrappedContent =
+                            "require('jenkins-js-modules').whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" + 
                             "require('jenkins-js-modules')\n" +
                                 "    .import(" + imports + ")\n" +
                                 "    .onFulfilled(function() {\n" +
@@ -449,7 +450,9 @@ function addModuleMappingTransforms(bundle, bundler) {
                                 "    });\n";
     
                         return done(null, wrappedContent);
-                    } else {
+                    } else {    
+                        // Call whoami for "this" bundle. Helps 'jenkins-js-modules' figure out the bundle nsProvider etc.
+                        content = "require('jenkins-js-modules').whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" + content;
                         return done(null, content);
                     }
                 } finally {
