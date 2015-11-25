@@ -8,6 +8,10 @@
   },
   "author": "Tom Fennelly <tom.fennelly@gmail.com> (https://github.com/tfennelly)",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jenkinsci/js-builder"
+  },
   "dependencies": {
     "browserify": "^10.2.6",
     "browserify-transform-tools": "^1.4.2",

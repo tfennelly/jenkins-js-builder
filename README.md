@@ -26,7 +26,7 @@ The following diagram illustrates the basic flow (and components used) in the pr
 It uses a number of popular JavaScript and maven tools ([CommonJS]/[node.js], [Browserify], [Gulp], [frontend-maven-plugin] and more).
 
 <p align="center">
-    <a href="https://github.com/tfennelly/jenkins-js-modules" target="_blank">
+    <a href="https://github.com/jenkinsci/js-modules" target="_blank">
         <img src="res/build_workflow.png" alt="Jenkins Module Bundle Build Workflow">
     </a>
 </p>
@@ -302,17 +302,18 @@ You can also execute:
 One source of examples for this are the [Framework lib]s. Browse the sub-projects in that repo and
 look at the [Gulp] files (`gulpfiles.js`).
 
-[bundle]: https://github.com/tfennelly/jenkins-js-modules/blob/master/FAQs.md#what-is-the-difference-between-a-module-and-a-bundle
-[jenkins-js-modules]: https://github.com/tfennelly/jenkins-js-modules
-[jenkins-js-test]: https://github.com/tfennelly/jenkins-js-test
+[bundle]: https://github.com/jenkinsci/js-modules/blob/master/FAQs.md#what-is-the-difference-between-a-module-and-a-bundle
+[jenkins-js-modules]: https://github.com/jenkinsci/js-modules
+[jenkins-js-builder]: https://github.com/jenkinsci/js-builder
+[jenkins-js-test]: https://github.com/jenkinsci/js-test
 [NPM]: https://www.npmjs.com/
 [CommonJS]: http://www.commonjs.org/
 [node.js]: https://nodejs.org/en/
 [Browserify]: http://browserify.org/
 [Gulp]: http://gulpjs.com/
 [frontend-maven-plugin]: https://github.com/eirslett/frontend-maven-plugin
-[intra-bundle]: https://github.com/tfennelly/jenkins-js-modules/blob/master/FAQs.md#what-does-module-loading-mean
-[inter-bundle]: https://github.com/tfennelly/jenkins-js-modules/blob/master/FAQs.md#what-does-module-loading-mean
+[intra-bundle]: https://github.com/jenkinsci/js-modules/blob/master/FAQs.md#what-does-module-loading-mean
+[inter-bundle]: https://github.com/jenkinsci/js-modules/blob/master/FAQs.md#what-does-module-loading-mean
 [io.js]: https://iojs.org
 [Framework lib]: https://github.com/jenkinsci/js-libs
 [LESS]: http://lesscss.org/
