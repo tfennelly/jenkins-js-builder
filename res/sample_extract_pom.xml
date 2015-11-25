@@ -19,22 +19,61 @@
         -->
         <profile>
             <id>node-classifier-linux</id>
-            <activation><os><family>Linux</family><arch>amd64</arch></os></activation>
-            <properties><node.download.file>node-v${node.version}-linux-x64.tar.gz</node.download.file></properties>
+            <activation>
+                <os><family>Linux</family><arch>amd64</arch></os>
+            </activation>
+            <properties>
+                <node.download.file>node-v${node.version}-linux-x64.tar.gz</node.download.file>
+                <node.download.classifier />
+            </properties>
         </profile>
         <profile>
             <id>node-classifier-mac</id>
-            <activation><os><family>mac</family></os></activation>
-            <properties><node.download.file>node-v${node.version}-darwin-x64.tar.gz</node.download.file></properties>
+            <activation>
+                <os><family>mac</family></os>
+            </activation>
+            <properties>
+                <node.download.file>node-v${node.version}-darwin-x64.tar.gz</node.download.file>
+                <node.download.classifier />
+            </properties>
         </profile>
         <profile>
             <id>node-classifier-windows</id>
-            <activation><os><family>windows</family></os></activation>
-            <properties><node.download.file>win-x64/node.exe</node.download.file></properties>
+            <activation>
+                <os><family>windows</family><arch>x64</arch></os>
+            </activation>
+            <properties>
+                <node.download.file>win-x64/node.exe</node.download.file>
+                <node.download.classifier>/x64</node.download.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>node-classifier-windows-amd64</id>
+            <activation>
+                <os><family>windows</family><arch>amd64</arch></os>
+            </activation>
+            <properties>
+                <node.download.file>win-x64/node.exe</node.download.file>
+                <node.download.classifier>/x64</node.download.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>node-classifier-windows-x86</id>
+            <activation>
+                <os><family>windows</family><arch>x86</arch></os>
+            </activation>
+            <properties>
+                <node.download.file>win-x86/node.exe</node.download.file>
+                <node.download.classifier />
+            </properties>
         </profile>
         <profile>
             <id>node-download</id>
-            <activation><file><exists>package.json</exists></file></activation>
+            <activation>
+                <file>
+                    <exists>package.json</exists>
+                </file>
+            </activation>
             <build>
                 <plugins>
                     <plugin>
@@ -51,7 +90,7 @@
                                 <configuration>
                                     <url>https://nodejs.org/dist/v${node.version}/${node.download.file}</url>
                                     <unpack>false</unpack>
-                                    <outputDirectory>${project.build.directory}/frontend/v${node.version}</outputDirectory>
+                                    <outputDirectory>${project.build.directory}/frontend/v${node.version}${node.download.classifier}</outputDirectory>
                                 </configuration>
                             </execution>
                             <execution>
@@ -66,56 +105,6 @@
                                     <outputDirectory>${project.build.directory}/frontend/</outputDirectory>
                                     <outputFileName>npm-${npm.version}.tgz</outputFileName>
                                 </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>node-npm-check</id>
-            <activation>
-                <file>
-                    <exists>package.json</exists>
-                </file>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <version>1.8</version>
-                        <executions>
-                            <execution>
-                                <id>check.for.node</id>
-                                <phase>initialize</phase>
-                                <configuration>
-                                    <target name="check.for.node">
-                                        <condition property="node.installed" value="true" else="false">
-                                            <resourceexists><file file="node/node-v${node.version}-installed" /></resourceexists>
-                                        </condition>                                    
-                                    </target>
-                                    <exportAntProperties>true</exportAntProperties>
-                                </configuration>
-                                <goals><goal>run</goal></goals>
-                            </execution>
-                            <execution>
-                                <id>install</id>
-                                <phase>initialize</phase>
-                                <configuration>
-                                    <target name="install" unless="${node.installed}">
-                                        <!-- 
-                                        Reset everything
-                                        -->
-                                        <delete dir="node"/>
-                                        <delete dir="node_modules"/>
-                                        <mkdir dir="node"/>
-                                        
-                                        <!-- Create a version based installation marker file. Used in "check.for.node" execution (above). -->
-                                        <touch file="node/node-v${node.version}-installed" />
-                                    </target>
-                                </configuration>
-                                <goals><goal>run</goal></goals>
                             </execution>
                         </executions>
                     </plugin>
@@ -201,7 +190,6 @@
                                 <goals>
                                     <goal>gulp</goal>
                                 </goals>
-                                <configuration><arguments>bundle test</arguments></configuration>
                             </execution>
 
                         </executions>
