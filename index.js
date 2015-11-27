@@ -11,6 +11,7 @@ var testWebServer;
 
 var cwd = process.cwd();
 var isMavenBuild = fs.existsSync(cwd + '/pom.xml');
+var hasJenkinsJsModulesDependency = hasJenkinsJsModulesDep();
 
 var bundles = []; // see exports.bundle function
 
@@ -173,6 +174,7 @@ exports.bundle = function(moduleToBundle, as) {
         return bundle;
     };
     bundle.asJenkinsModuleResource = function() {
+        assertHasJenkinsJsModulesDependency('Cannot bundle "asJenkinsModuleResource".');
         assertBundleOutputUndefined();
         bundle.bundleAsJenkinsModule = true;
         gutil.log(gutil.colors.green("Bundle will be generated as a Jenkins Module in '" + jsmodulesBasePath + "' as '" + bundle.as + "'."));            
@@ -183,6 +185,7 @@ exports.bundle = function(moduleToBundle, as) {
         return bundle;
     };
     bundle.withExternalModuleMapping = function(from, to, require) {
+        assertHasJenkinsJsModulesDependency('Cannot bundle "withExternalModuleMapping".');
         if (!from || !to) {
             var message = "Cannot call 'withExternalModuleMapping' without defining both 'to' and 'from' module names.";
             exports.logError(message);
@@ -210,6 +213,7 @@ exports.bundle = function(moduleToBundle, as) {
         return bundle;
     };
     bundle.export = function(toNamespace) {
+        assertHasJenkinsJsModulesDependency('Cannot bundle "export".');
         if (toNamespace) {
             bundle.bundleExport = true;
             bundle.bundleExportNamespace = toNamespace;
@@ -427,13 +431,15 @@ function addModuleMappingTransforms(bundle, bundler) {
                         exportModule = 'module'; // export the module
                     }
 
-                    // Always call export, even if the export function was not called on the builder instance.
-                    // If the export function was not called, we export nothing (see above). In this case, it just 
-                    // generates an event for any modules that need to sync on the load event for the module.
-                    content += "\n" +
-                        "\t\trequire('jenkins-js-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
+                    if(hasJenkinsJsModulesDependency) {
+                        // Always call export, even if the export function was not called on the builder instance.
+                        // If the export function was not called, we export nothing (see above). In this case, it just 
+                        // generates an event for any modules that need to sync on the load event for the module.
+                        content += "\n" +
+                            "\t\trequire('jenkins-js-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
+                    }
     
-                    if (bundle.bundleExportNamespace && bundle.lessSrcPath) {
+                    if (hasJenkinsJsModulesDependency && bundle.bundleExportNamespace && bundle.lessSrcPath) {
                         content += "\n" +
                             "\t\trequire('jenkins-js-modules').addModuleCSSToPage('" + bundle.bundleExportNamespace + "', '" + bundle.as + "');";
                     }
@@ -450,9 +456,11 @@ function addModuleMappingTransforms(bundle, bundler) {
                                 "    });\n";
     
                         return done(null, wrappedContent);
-                    } else {    
-                        // Call whoami for "this" bundle. Helps 'jenkins-js-modules' figure out the bundle nsProvider etc.
-                        content = "require('jenkins-js-modules').whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" + content;
+                    } else {
+                        if(hasJenkinsJsModulesDependency) {
+                            // Call whoami for "this" bundle. Helps 'jenkins-js-modules' figure out the bundle nsProvider etc.
+                            content = "require('jenkins-js-modules').whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" + content;
+                        }
                         return done(null, content);
                     }
                 } finally {
@@ -503,6 +511,28 @@ function _stopTestWebServer() {
         testWebServer.close();
         testWebServer = undefined;
         exports.logInfo('Testing web server stopped.');
+    }
+}
+
+function hasJenkinsJsModulesDep() {
+    var packageJson = require(cwd + '/package.json');
+    
+    function findJenkinsJsModulesDep(onDepMap) {
+        if (onDepMap) {
+            return (onDepMap['jenkins-js-modules'] !== undefined);
+        }
+        return false;
+    }
+    
+    return (findJenkinsJsModulesDep(packageJson.dependencies) || findJenkinsJsModulesDep(packageJson.devDependencies));
+}
+function assertHasJenkinsJsModulesDependency(message) {
+    if(!hasJenkinsJsModulesDependency) {
+        if (!message) {
+            message = 'Missing required NPM dependency.';
+        }
+        exports.logError(message + '\n\t- You must install the jenkins-js-modules NPM package i.e. npm install --save jenkins-js-modules');
+        process.exit(1);
     }
 }
 
