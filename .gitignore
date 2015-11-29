@@ -7,3 +7,6 @@
 # Node
 node/
 node_modules/
+
+target
+jenkins

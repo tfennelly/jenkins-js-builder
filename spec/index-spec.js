@@ -19,7 +19,11 @@ describe("index.js", function () {
             
             // Make sure all the scripts were loaded as expected.
             expect(browser.success).toBe(true);
+            expect(jsLoads.length).toBe(1);
             expect(jsLoads[0]).toBe('http://localhost:18999/target/testmodule/testmodule_1.js');
+            
+            // Make sure the bundle executed...
+            expect(browser.window.testmoduleXYZ).toBe('Hello');
             
             done();
         });
@@ -42,7 +46,47 @@ describe("index.js", function () {
             
             // Make sure all the scripts were loaded as expected.
             expect(browser.success).toBe(true);
+            expect(jsLoads.length).toBe(2);
             expect(jsLoads[0]).toBe('http://localhost:18999/target/testmodule/testmodule_2.js');
+            expect(jsLoads[1]).toBe('http://localhost:18999/jenkins/plugin/underscore/jsmodules/under_string2.js'); // loading of the dependency
+
+            // Shouldn't be any css loaded
+            browser.assert.elements('link', 0);
+            
+            // Make sure the bundle executed...
+            expect(browser.window.testmoduleXYZ).toBe('Hello');
+            
+            done();
+        });
+    });
+
+    it("- test testmodule_3", function (done) {
+        var browser = new Browser();
+        var jsLoads = [];
+
+        browser.debug();
+        browser.on('request', function(request) {
+            var url = request.url;
+            if (endsWith(url, '.js')) {
+                jsLoads.push(url);
+            }
+        });
+        
+        browser.visit('http://localhost:18999/spec/testmodule_3.html', function() {
+            expect(browser.success).toBe(true);
+            
+            // Make sure all the scripts were loaded as expected.
+            expect(browser.success).toBe(true);
+            expect(jsLoads.length).toBe(2);
+            expect(jsLoads[0]).toBe('http://localhost:18999/target/testmodule/testmodule_3.js');
+            expect(jsLoads[1]).toBe('http://localhost:18999/jenkins/plugin/underscore/jsmodules/under_string2.js'); // loading of the dependency
+
+            // Should be css on page
+            browser.assert.elements('link', 1);
+            browser.assert.attribute('link', 'href', '/jenkins/plugin/underscore/jsmodules/under_string2/style.css');
+            
+            // Make sure the bundle executed...
+            expect(browser.window.testmoduleXYZ).toBe('Hello');
             
             done();
         });
