@@ -23,10 +23,14 @@
     "handlebars": "^3.0.3",
     "hbsfy": "^2.2.1",
     "jasmine-reporters": "^2.0.6",
+    "jenkins-js-modules": "^1.4.0",
     "node-http-server": "^3.0.5",
     "underscore.string": "^3.1.1",
     "vinyl-source-stream": "^1.1.0",
     "window-handle": "0.0.6",
     "xml2js": "^0.4.9"
+  },
+  "devDependencies": {
+    "zombie": "^4.2.1"
   }
 }

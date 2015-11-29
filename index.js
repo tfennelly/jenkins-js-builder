@@ -64,8 +64,7 @@ exports.defineTasks = function(tasknames) {
 exports.defineTask = function(taskname, gulpTask) {
     if (taskname === 'test') {
         // Want to make sure the 'bundle' task gets run with the 'test' task.
-        gulp.task('appTest', gulpTask);
-        gulp.task('test', ['bundle', 'appTest']);
+        gulp.task('test', ['bundle'], gulpTask);
     } else {
         gulp.task(taskname, gulpTask);
     }
@@ -160,7 +159,7 @@ exports.bundle = function(moduleToBundle, as) {
         }
         assertBundleOutputUndefined();
         bundle.bundleToAdjunctPackageDir = packageToPath(packageName);
-        gutil.log(gutil.colors.green("Bundle will be generated as an adjunct in '" + adjunctBasePath + "' as '" + packageName + "." + bundle.as + "' (it's a .js file)."));
+        gutil.log(gutil.colors.green("Bundle will be generated as an adjunct in '" + adjunctBasePath + "' as '" + packageName + "." + bundle.as + ".js'."));
         return bundle;
     };
     bundle.inDir = function(dir) {
@@ -170,22 +169,32 @@ exports.bundle = function(moduleToBundle, as) {
         }
         assertBundleOutputUndefined();
         bundle.bundleInDir = normalizePath(dir);
-        gutil.log(gutil.colors.green("Bundle will be generated in directory '" + bundle.bundleInDir + "' as '" + bundle.js + "'."));
+        gutil.log(gutil.colors.green("Bundle will be generated in directory '" + bundle.bundleInDir + "' as '" + bundle.as + ".js'."));
         return bundle;
     };
     bundle.asJenkinsModuleResource = function() {
         assertHasJenkinsJsModulesDependency('Cannot bundle "asJenkinsModuleResource".');
         assertBundleOutputUndefined();
         bundle.bundleAsJenkinsModule = true;
-        gutil.log(gutil.colors.green("Bundle will be generated as a Jenkins Module in '" + jsmodulesBasePath + "' as '" + bundle.as + "'."));            
+        gutil.log(gutil.colors.green("Bundle will be generated as a Jenkins Module in '" + jsmodulesBasePath + "' as '" + bundle.as + ".js'."));            
         return bundle;
     };
     bundle.withTransforms = function(transforms) {
         bundle.bundleTransforms = transforms;
         return bundle;
     };
-    bundle.withExternalModuleMapping = function(from, to, require) {
+    bundle.withExternalModuleMapping = function(from, to, config) {
         assertHasJenkinsJsModulesDependency('Cannot bundle "withExternalModuleMapping".');
+        
+        if (config === undefined) {
+            config = {};
+        } else if (typeof config === 'string') {
+            // config is the require mapping override (backward compatibility).
+            config = {
+                require: config
+            };
+        } 
+        
         if (!from || !to) {
             var message = "Cannot call 'withExternalModuleMapping' without defining both 'to' and 'from' module names.";
             exports.logError(message);
@@ -193,14 +202,14 @@ exports.bundle = function(moduleToBundle, as) {
         }
         
         // special case because we are externalizing handlebars runtime for handlebarsify.
-        if (from === 'handlebars' && to === 'handlebars:handlebars3' && !require) {
-            require = 'jenkins-handlebars-rt/runtimes/handlebars3_rt';
+        if (from === 'handlebars' && to === 'handlebars:handlebars3' && !config.require) {
+            config.require = 'jenkins-handlebars-rt/runtimes/handlebars3_rt';
         }
         
         bundle.moduleMappings.push({
             from: from, 
             to: to, 
-            require: require
+            config: config
         });
         
         return bundle;
@@ -277,6 +286,8 @@ var tasks = {
                     gulp.emit('testing_completed');
                 }                
             }]}));
+
+        exports.logInfo('Test execution completed.');
     },
     bundle: function() {
         if (bundles.length === 0) {
@@ -394,8 +405,8 @@ function addModuleMappingTransforms(bundle, bundler) {
                 for (var i = 0; i < moduleMappings.length; i++) {
                     var mapping = moduleMappings[i];
                     if (mapping.from === required) {
-                        if (mapping.require) {
-                            return cb(null, "require('" + mapping.require + "')");
+                        if (mapping.config.require) {
+                            return cb(null, "require('" + mapping.config.require + "')");
                         } else {
                             return cb(null, "require('jenkins-js-modules').require('" + mapping.to + "')");
                         }
@@ -439,11 +450,6 @@ function addModuleMappingTransforms(bundle, bundler) {
                             "\t\trequire('jenkins-js-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
                     }
     
-                    if (hasJenkinsJsModulesDependency && bundle.bundleExportNamespace && bundle.lessSrcPath) {
-                        content += "\n" +
-                            "\t\trequire('jenkins-js-modules').addModuleCSSToPage('" + bundle.bundleExportNamespace + "', '" + bundle.as + "');";
-                    }
-    
                     if (imports.length > 0) {
                         var wrappedContent =
                             "require('jenkins-js-modules').whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" + 
@@ -453,8 +459,22 @@ function addModuleMappingTransforms(bundle, bundler) {
                                 "\n" +
                                 content +
                                 "\n" +
-                                "    });\n";
-    
+                                "    });\n\n";
+
+                        // perform addModuleCSSToPage actions for mappings that requested it.
+                        // We don't need the imports to complete before adding these. We can just add
+                        // them immediately.
+                        var jsmodules = require('jenkins-js-modules/js/internal');                        
+                        for (var i = 0; i < moduleMappings.length; i++) {
+                            var mapping = moduleMappings[i];
+                            var addDefaultCSS = mapping.config.addDefaultCSS;
+                            if (addDefaultCSS && addDefaultCSS === true) {
+                                var parsedModuleQName = jsmodules.parseResourceQName(mapping.to);
+                                wrappedContent += 
+                                    "require('jenkins-js-modules').addModuleCSSToPage('" + parsedModuleQName.namespace + "', '" + parsedModuleQName.moduleName + "');\n";                                
+                            }
+                        }
+                        
                         return done(null, wrappedContent);
                     } else {
                         if(hasJenkinsJsModulesDependency) {
@@ -479,6 +499,7 @@ function less(src, targetDir) {
     gulp.src(src)
         .pipe(less())
         .pipe(gulp.dest(targetDir));
+    exports.logInfo('LESS CSS pre-processing completed.');
 }
 
 function _startTestWebServer(config) {
