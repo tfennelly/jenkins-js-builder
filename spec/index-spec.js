@@ -1,8 +1,4 @@
 var Browser = require("zombie");
-var fs = require('fs');
-
-var cwd = process.cwd();
-console.log('***** ' + fs.existsSync(cwd + '/target/testmodule/testmodule_1.js'));
 
 describe("index.js", function () {
 
