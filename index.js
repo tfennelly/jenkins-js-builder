@@ -14,6 +14,7 @@ var isMavenBuild = fs.existsSync(cwd + '/pom.xml');
 var hasJenkinsJsModulesDependency = hasJenkinsJsModulesDep();
 
 var bundles = []; // see exports.bundle function
+var bundleTaskNames = [];
 
 var adjunctBasePath = './target/generated-adjuncts/';
 var jsmodulesBasePath = './src/main/webapp/jsmodules/';
@@ -67,11 +68,7 @@ exports.defineTask = function(taskname, gulpTask) {
         gulp.task('test', ['bundle'], gulpTask);
     } else if (taskname === 'bundle') {
         // Define the bundle task so that it depends on the "sub" bundle tasks.
-        var subBundles = [];
-        for (var i = 0; i < bundles.length; i++) {
-            subBundles.push('bundle_' + bundles[i].as);
-        }
-        gulp.task('bundle', subBundles, gulpTask);
+        gulp.task('bundle', bundleTaskNames, gulpTask);
     } else {
         gulp.task(taskname, gulpTask);
     }
@@ -169,6 +166,12 @@ exports.bundle = function(moduleToBundle, as) {
         gutil.log(gutil.colors.green("Bundle will be generated as an adjunct in '" + adjunctBasePath + "' as '" + packageName + "." + bundle.as + ".js'."));
         return bundle;
     };
+    bundle.generateNoImportsBundle = function() {
+        // Create a self contained version of the bundle (no imports) - useful for 
+        // testing and probably more.
+        defineBundleTask(bundle, false);
+        return bundle;
+    };
     bundle.inDir = function(dir) {
         if (!dir) {
             gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + moduleToBundle + "'. You can't specify a 'null' dir name when calling inDir."));
@@ -251,67 +254,94 @@ exports.bundle = function(moduleToBundle, as) {
     }
     
     bundles.push(bundle);
-
-    exports.defineTask('bundle_' + bundle.as, function() {
-        if (!bundle.bundleToAdjunctPackageDir && !bundle.bundleAsJenkinsModule && !bundle.bundleInDir) {
-            exports.logError("Error: Cannot perform 'bundle' task. No bundle output spec defined. You must call 'inAdjunctPackage([adjunct-package-name])' or 'asJenkinsModuleResource' or 'inDir([dir])' on the response return from the call to 'bundle'.");
-            throw "'bundle' task failed. See error above.";
+    
+    function defineBundleTask(bundle, applyImports) {
+        var bundleTaskName = 'bundle_' + bundle.as;
+        
+        if (!applyImports) {
+            bundleTaskName += '_no_imports';
         }
+        
+        bundleTaskNames.push(bundleTaskName);
+        
+        exports.defineTask(bundleTaskName, function() {
+            if (!bundle.bundleToAdjunctPackageDir && !bundle.bundleAsJenkinsModule && !bundle.bundleInDir) {
+                exports.logError("Error: Cannot perform 'bundle' task. No bundle output spec defined. You must call 'inAdjunctPackage([adjunct-package-name])' or 'asJenkinsModuleResource' or 'inDir([dir])' on the response return from the call to 'bundle'.");
+                throw "'bundle' task failed. See error above.";
+            }
 
-        var bundleTo;
-        if (bundle.bundleAsJenkinsModule) {
-            bundleTo = jsmodulesBasePath;
-        } else if (bundle.bundleInDir) {
-            bundleTo = bundle.bundleInDir;
-        } else {
-            bundleTo = adjunctBasePath + "/" + bundle.bundleToAdjunctPackageDir;
-        }
-
-        if (bundle.lessSrcPath) {
-            var lessBundleTo = bundleTo;
-            
+            var bundleTo;
             if (bundle.bundleAsJenkinsModule) {
-                // If it's a jenkins module, the CSS etc need to go into a folder under jsmodulesBasePath
-                // and the name of the folder must be the module name
-                lessBundleTo += '/' + bundle.as;
-            } else if (bundle.lessTargetDir) {
-                lessBundleTo = bundle.lessTargetDir;
+                bundleTo = jsmodulesBasePath;
+            } else if (bundle.bundleInDir) {
+                bundleTo = bundle.bundleInDir;
+            } else {
+                bundleTo = adjunctBasePath + "/" + bundle.bundleToAdjunctPackageDir;
+            }
+
+            if (!applyImports) {
+                bundleTo += '/no_imports';
             }
             
-            less(bundle.lessSrcPath, lessBundleTo);
-        }
-        
-        var fileToBundle = bundle.bundleModule;
-        if (bundle.bundleDependencyModule) {
-            // Lets generate a temp file containing the module require.
-            if (!fs.existsSync('target')) {
-                fs.mkdirSync('target');
+            // Only process LESS when generating the bundle containing imports. If using the "no_imports" bundle, you 
+            // need to take care of adding the CSS yourself. 
+            if (applyImports && bundle.lessSrcPath) {
+                var lessBundleTo = bundleTo;
+
+                if (bundle.bundleAsJenkinsModule) {
+                    // If it's a jenkins module, the CSS etc need to go into a folder under jsmodulesBasePath
+                    // and the name of the folder must be the module name
+                    lessBundleTo += '/' + bundleTaskName;
+                } else if (bundle.lessTargetDir) {
+                    lessBundleTo = bundle.lessTargetDir;
+                }
+
+                less(bundle.lessSrcPath, lessBundleTo);
             }
-            fileToBundle = 'target/' + bundle.bundleOutputFile;
-            fs.writeFileSync(fileToBundle, "module.exports = require('" + bundle.module + "');");
-        }
-        
-        var bundler = browserify({
-            entries: [fileToBundle],
-            extensions: ['.js', '.hbs'],
-            cache: {},
-            packageCache: {},
-            fullPaths: false
-        });
-        var hbsfy = require("hbsfy").configure({
-            compiler: "require('jenkins-handlebars-rt/runtimes/handlebars3_rt')"
-        });
-        bundler.transform(hbsfy);        
-        if (bundle.bundleTransforms) {
-            for (var i = 0; i < bundle.bundleTransforms.length; i++) {
-                bundler.transform(bundle.bundleTransforms[i]);        
+
+            var fileToBundle = bundle.bundleModule;
+            if (bundle.bundleDependencyModule) {
+                // Lets generate a temp file containing the module require.
+                if (!fs.existsSync('target')) {
+                    fs.mkdirSync('target');
+                }
+                fileToBundle = 'target/' + bundle.bundleOutputFile;
+                fs.writeFileSync(fileToBundle, "module.exports = require('" + bundle.module + "');");
             }
-        }
-        addModuleMappingTransforms(bundle, bundler);
-        
-        return bundler.bundle().pipe(source(bundle.bundleOutputFile))
-            .pipe(gulp.dest(bundleTo));     
-    });
+
+            var bundler = browserify({
+                entries: [fileToBundle],
+                extensions: ['.js', '.hbs'],
+                cache: {},
+                packageCache: {},
+                fullPaths: false
+            });
+
+            var hbsfy = require("hbsfy");            
+            if (applyImports) {
+                hbsfy.configure({
+                    compiler: "require('jenkins-handlebars-rt/runtimes/handlebars3_rt')"
+                });
+            }            
+            bundler.transform(hbsfy);
+
+            if (bundle.bundleTransforms) {
+                for (var i = 0; i < bundle.bundleTransforms.length; i++) {
+                    bundler.transform(bundle.bundleTransforms[i]);
+                }
+            }
+            
+            if (applyImports) {
+                addModuleMappingTransforms(bundle, bundler);
+            }
+
+            return bundler.bundle().pipe(source(bundle.bundleOutputFile))
+                .pipe(gulp.dest(bundleTo));
+        });
+    }
+    
+    // Create a bundle with imports applied/transformed.
+    defineBundleTask(bundle, true);
     
     // Define the 'bundle' task again so it picks up the new dependency
     exports.defineTask('bundle', tasks.bundle);

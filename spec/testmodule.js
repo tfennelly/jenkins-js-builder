@@ -1,5 +1,8 @@
-var underscore = require('underscore.string');
+var testTemplate = require("../js/test.hbs");
+var helloContent = testTemplate({message: 'Hello World'});
 
-console.log(underscore);
+// Load underscore
+require('underscore.string');
 
+document.body.innerHTML = helloContent;
 window.testmoduleXYZ = 'Hello';

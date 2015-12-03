@@ -91,6 +91,38 @@ describe("index.js", function () {
             done();
         });
     });
+
+    it("- test testmodule_3_no_imports", function (done) {
+        var browser = new Browser();
+        var jsLoads = [];
+
+        browser.debug();
+        browser.on('request', function(request) {
+            var url = request.url;
+            if (endsWith(url, '.js')) {
+                jsLoads.push(url);
+            }
+        });
+        
+        browser.visit('http://localhost:18999/spec/testmodule_3_no_imports.html', function() {
+            expect(browser.success).toBe(true);
+            
+            // Make sure all the scripts were loaded as expected.
+            expect(browser.success).toBe(true);
+            expect(jsLoads.length).toBe(1);
+            expect(jsLoads[0]).toBe('http://localhost:18999/target/testmodule/no_imports/testmodule_3.js');
+            
+            // check that the template was applied
+            var messageDiv = browser.window.document.getElementById('messageDiv');
+            expect(messageDiv).toBeDefined();
+            expect(messageDiv.textContent).toBe('Hello World');
+            
+            // Make sure the bundle executed...
+            expect(browser.window.testmoduleXYZ).toBe('Hello');
+            
+            done();
+        });
+    });
 });
 
 function endsWith(string, suffix) {

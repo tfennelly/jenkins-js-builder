@@ -17,7 +17,8 @@ builder.bundle('spec/testmodule.js', 'testmodule_2')
 //  - Has use of default CSS 
 builder.bundle('spec/testmodule.js', 'testmodule_3')
     .withExternalModuleMapping('underscore.string', 'underscore:under_string2', {addDefaultCSS: true})
-    .inDir('target/testmodule');
+    .inDir('target/testmodule')
+    .generateNoImportsBundle();
 
 // Create dependency bundles
 builder.bundle('underscore.string', 'under_string2')
