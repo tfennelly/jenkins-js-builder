@@ -240,7 +240,7 @@ bundleSpec.generateNoImportsBundle();
 With this option set, the "no_imports" bundle is generated into a sub-folder named "no_imports", inside the same
 folder in which the "main" bundle is generated.
 
-> For an example of how to use see the <a href="https://github.com/jenkinsci/js-samples/tree/master/step-08-zombie-tests">"step-08-zombie-tests" Integration Test sample plugin</a>.
+> For an example of how to use the `generateNoImportsBundle` option, see the <a href="https://github.com/jenkinsci/js-samples/tree/master/step-08-zombie-tests">"step-08-zombie-tests" Integration Test sample plugin</a>.
 
 ## Step 5 (Optional): Export
 Exporting the "main" module (allowing other bundle modules to `import` it) from the [bundle] is easy:
