@@ -11,7 +11,7 @@ __Table of Contents__:
     <a href="#bundling">Bundling</a><br/>
     <a href="#setting-src-and-test-spec-paths">Setting 'src' and 'test' (spec) paths</a><br/>
     <a href="#maven-integration">Maven Integration</a><br/>
-    <a href="#examples">Examples</a><br/>
+    <a href="https://github.com/jenkinsci/js-samples">Sample Plugins (Jenkins - HPI)</a><br/>    
 </ul>    
 </p>
 
@@ -222,6 +222,24 @@ bundleSpec.withExternalModuleMapping('moment', 'momentjs:momentjs2');
 Of course your "app" bundle may depend on a number of weighty [Framework lib]s that you would prefer not to
 include in your bundle. If so, simply call `withExternalModuleMapping` for each.
 
+### Step 4.1 (Optional): Generating a "no_imports" bundle
+Externalizing commons [Framework lib]s (<a href="#step-4-optional-specify-external-module-mappings-imports">see Step 4</a>)
+is important in terms of producing a JavaScript [bundle] that can be used in production (is lighter etc), but can make
+things a bit trickier when it comes to Integration Testing your bundle because your test (and test environment) will now need to
+accommodate the fact that your bundle no longer contains all the [Framework lib]s it depends on.
+
+For that reason, `jenkins-js-builder` supports the `generateNoImportsBundle` option, which tells the builder to also generate
+a [bundle] that includes all of it's dependency [Framework lib]s i.e. a [bundle] which does not apply imports (hence "no_imports").
+
+```javascript
+bundleSpec.generateNoImportsBundle();
+```
+
+> Note that this is an additional [bundle] i.e. not instead of the "main" bundle (in which "imports" are applied).
+
+With this option set, the "no_imports" bundle is generated into a sub-folder named "no_imports", inside the same
+folder in which the "main" bundle is generated.
+
 ## Step 5 (Optional): Export
 Exporting the "main" module (allowing other bundle modules to `import` it) from the [bundle] is easy:
 
@@ -297,10 +315,6 @@ With these `<profiles>`s installed, Maven will run [Gulp] as part of the build.
 You can also execute:
 
 * `mvn clean -DcleanNode`: Cleans out the local node and NPM artifacts and resource (including the `node_modules` folder).
-
-# Examples
-One source of examples for this are the [Framework lib]s. Browse the sub-projects in that repo and
-look at the [Gulp] files (`gulpfiles.js`).
 
 [bundle]: https://github.com/jenkinsci/js-modules/blob/master/FAQs.md#what-is-the-difference-between-a-module-and-a-bundle
 [jenkins-js-modules]: https://github.com/jenkinsci/js-modules
