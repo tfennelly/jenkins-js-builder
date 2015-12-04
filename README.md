@@ -279,7 +279,7 @@ See __Step 4__ above.
 This can be done by calling `minify` on `jenkins-js-builder`:
 
 ```javascript
-bundleSpec.minfy();
+bundleSpec.minify();
 ```
 
 Or, by passing `--minify` on the command line. This will result in the minification of all generated bundles.
