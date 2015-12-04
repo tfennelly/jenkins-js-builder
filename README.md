@@ -10,6 +10,7 @@ __Table of Contents__:
     <a href="#predefined-gulp-tasks">Predefined Gulp Tasks</a><br/>
     <a href="#bundling">Bundling</a><br/>
     <a href="#setting-src-and-test-spec-paths">Setting 'src' and 'test' (spec) paths</a><br/>
+    <a href="#command-line-options">Command line options</a><br/>
     <a href="#maven-integration">Maven Integration</a><br/>
     <a href="https://github.com/jenkinsci/js-samples">Sample Plugins (Jenkins - HPI)</a><br/>    
 </ul>    
