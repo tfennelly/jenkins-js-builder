@@ -156,6 +156,7 @@ exports.bundle = function(moduleToBundle, as) {
     bundle.bundleModule = moduleToBundle;
     bundle.bundleOutputFile = bundle.as + '.js';
     bundle.moduleMappings = [];
+    bundle.minifyBundle = isArgvSpecified('--minify');
     bundle.inAdjunctPackage = function(packageName) {
         if (!packageName) {
             gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + moduleToBundle + "'. You can't specify a 'null' adjunct package name."));
@@ -170,6 +171,10 @@ exports.bundle = function(moduleToBundle, as) {
         // Create a self contained version of the bundle (no imports) - useful for 
         // testing and probably more.
         defineBundleTask(bundle, false);
+        return bundle;
+    };
+    bundle.minify = function() {
+        bundle.minifyBundle = true;
         return bundle;
     };
     bundle.inDir = function(dir) {
@@ -309,13 +314,17 @@ exports.bundle = function(moduleToBundle, as) {
                 fs.writeFileSync(fileToBundle, "module.exports = require('" + bundle.module + "');");
             }
 
-            var bundler = browserify({
+            var browserifyConfig = {
                 entries: [fileToBundle],
                 extensions: ['.js', '.hbs'],
                 cache: {},
                 packageCache: {},
                 fullPaths: false
-            });
+            };
+            if (bundle.minifyBundle === true) {
+                browserifyConfig.debug = true;
+            }            
+            var bundler = browserify(browserifyConfig);
 
             var hbsfy = require("hbsfy");            
             if (applyImports) {
@@ -335,6 +344,14 @@ exports.bundle = function(moduleToBundle, as) {
                 addModuleMappingTransforms(bundle, bundler);
             }
 
+            if (bundle.minifyBundle === true) {
+                var sourceMap = bundle.as + '.map.json';
+                bundler.plugin('minifyify', {
+                    map: sourceMap,
+                    output: bundleTo + '/' + sourceMap
+                });
+            }
+            
             return bundler.bundle().pipe(source(bundle.bundleOutputFile))
                 .pipe(gulp.dest(bundleTo));
         });
@@ -377,7 +394,8 @@ var tasks = {
             filePrefix: 'JasmineReport'    
         });
 
-        var testSpecs = testSrcPath + '/**/*-spec.js';
+        var testSpecs = testSrcPath + '/**/' + argvValue('--test', '') + '*-spec.js';
+        exports.logInfo('Test specs: ' + testSpecs);
         
         global.jenkinsBuilder = exports;
         _startTestWebServer();
@@ -592,6 +610,28 @@ function assertHasJenkinsJsModulesDependency(message) {
         exports.logError(message + '\n\t- You must install the jenkins-js-modules NPM package i.e. npm install --save jenkins-js-modules');
         process.exit(1);
     }
+}
+
+function isArgvSpecified(argv) {
+    return (argvIndex(argv) !== -1);
+}
+
+function argvValue(argv, defaultVal) {
+    var i = argvIndex(argv);
+    if (i >= 0 && i < process.argv.length - 1) {
+        // The arg after the argv/name is it's value
+        return process.argv[i + 1];
+    }
+    return defaultVal;    
+}
+
+function argvIndex(argv) {
+    for (var i = 0; i < process.argv.length; i++) {
+        if (process.argv[i] === argv) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 // Defined default tasks. Can be overridden.

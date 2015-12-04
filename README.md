@@ -223,6 +223,9 @@ Of course your "app" bundle may depend on a number of weighty [Framework lib]s t
 include in your bundle. If so, simply call `withExternalModuleMapping` for each.
 
 ### Step 4.1 (Optional): Generating a "no_imports" bundle
+
+> _since_: 0.0.34
+
 Externalizing commons [Framework lib]s (<a href="#step-4-optional-specify-external-module-mappings-imports">see Step 4</a>)
 is important in terms of producing a JavaScript [bundle] that can be used in production (is lighter etc), but can make
 things a bit trickier when it comes to Integration Testing your bundle because your test (and test environment) will now need to
@@ -268,6 +271,22 @@ It would need to:
   
 See __Step 4__ above.  
 
+## Step 6 (Optional): Minify bundle JavaScript
+
+> _since_: 0.0.35
+
+This can be done by calling `minify` on `jenkins-js-builder`:
+
+```javascript
+bundleSpec.minfy();
+```
+
+Or, by passing `--minify` on the command line. This will result in the minification of all generated bundles.
+ 
+```sh
+$ gulp --minify
+```
+
 # Setting 'src' and 'test' (spec) paths
 The default paths depend on whether or not running in a maven project.
 
@@ -297,6 +316,32 @@ You can also specify an array of `src` folders e.g.
 ```javascript
 builder.src(['src/main/js', 'src/main/less']);
 ```
+
+# Command line options
+
+A number of `jenkins-js-builder` options can be specified on the command line.
+
+## `--minify`
+
+> _since_: 0.0.35
+
+Passing `--minify` on the command line will result in the minification of all generated bundles.
+ 
+```sh
+$ gulp --minify
+```
+
+## `--test`
+
+> _since_: 0.0.35
+
+Run a single test.
+ 
+```sh
+$ gulp --test configeditor
+```
+
+The above example would run test specs matching the `**/configeditor*-spec.js` pattern (in the test source directory).
 
 # Maven Integration
 Hooking a [Gulp] based build into a Maven build involves adding a few Maven `<profile>`s to the
