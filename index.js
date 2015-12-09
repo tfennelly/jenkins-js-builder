@@ -69,6 +69,9 @@ exports.defineTask = function(taskname, gulpTask) {
     } else if (taskname === 'bundle') {
         // Define the bundle task so that it depends on the "sub" bundle tasks.
         gulp.task('bundle', bundleTaskNames, gulpTask);
+    } else if (taskname === 'rebundle') {
+        // Run bundle at the start of rebundle
+        gulp.task('rebundle', ['bundle'], gulpTask);
     } else {
         gulp.task(taskname, gulpTask);
     }
