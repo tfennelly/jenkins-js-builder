@@ -331,7 +331,7 @@ exports.bundle = function(moduleToBundle, as) {
 
             var hbsfy = require("hbsfy");            
             if (applyImports) {
-                hbsfy.configure({
+                hbsfy = hbsfy.configure({
                     compiler: "require('jenkins-handlebars-rt/runtimes/handlebars3_rt')"
                 });
             }            
