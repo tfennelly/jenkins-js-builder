@@ -250,16 +250,29 @@ exports.bundle = function(moduleToBundle, as) {
 
             bundle.bundleExport = true;
             xmlParser(pomXML, function (err, pom) {
-                if (pom.project.packaging[0] === 'hpi') {
-                    // It's a jenkins plugin (hpi), so capture the name of the plugin.
-                    // This will be used later for the export namespace.
-                    bundle.bundleExportNamespace = pom.project.artifactId[0];
-                }
+                // Use the maven artifactId as the namespace.
+                bundle.bundleExportNamespace = pom.project.artifactId[0];
+                if (pom.project.packaging[0] !== 'hpi') {
+                    exports.logWarn("\t-Bundling process will use the maven pom artifactId ('" + bundle.bundleExportNamespace + "') as the bundle export namespace. You can specify a namespace as a parameter to the 'export' method call.");
+                }            
             });
         } else {
             gutil.log(gutil.colors.red("Error: This is not a maven project. You must define a 'toNamespace' argument to the 'export' call."));
+            return;
         }
-    }
+        exports.logInfo("\t- Bundle will be exported as '" + bundle.bundleExportNamespace + ":" + bundle.as + "'.");
+    };
+    
+    bundle.findModuleMapping = function(from) {
+        var moduleMappings = bundle.moduleMappings;
+        for (var i = 0; i < moduleMappings.length; i++) {
+            var mapping = moduleMappings[i];
+            if (from === mapping.from) {
+                return mapping;
+            }
+        }
+        return undefined;
+    };    
     
     bundles.push(bundle);
     
@@ -329,8 +342,16 @@ exports.bundle = function(moduleToBundle, as) {
             }            
             var bundler = browserify(browserifyConfig);
 
-            var hbsfy = require("hbsfy");            
-            if (applyImports) {
+            var hbsfy = require("hbsfy");
+            if (applyImports && bundle.findModuleMapping('handlebars')) {
+                // If there's a module mapping for handlebars, then configure handlebarsify to use
+                // jenkins-handlebars-rt/runtimes/handlebars3_rt. This is a jenkins-js-modules compatible
+                // module "import" version of handlebars, which helps with 2 things:
+                // 1. It stops browserify from bundling the full handlebars package, importing it at runtime
+                //    instead and therefore making the final bundle lighter.
+                // 2. It guarantees that the instance of Handlebars used by the handlebarsify'd templates is
+                //    the same as that used by other modules e.g. where helpers are registered. This is one of
+                //    the big PITA things about using handlebars with browserify.
                 hbsfy = hbsfy.configure({
                     compiler: "require('jenkins-handlebars-rt/runtimes/handlebars3_rt')"
                 });
