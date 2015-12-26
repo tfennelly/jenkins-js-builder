@@ -253,7 +253,7 @@ exports.bundle = function(moduleToBundle, as) {
                 // Use the maven artifactId as the namespace.
                 bundle.bundleExportNamespace = pom.project.artifactId[0];
                 if (pom.project.packaging[0] !== 'hpi') {
-                    exports.logWarn("\t-Bundling process will use the maven pom artifactId ('" + bundle.bundleExportNamespace + "') as the bundle export namespace. You can specify a namespace as a parameter to the 'export' method call.");
+                    exports.logWarn("\t- Bundling process will use the maven pom artifactId ('" + bundle.bundleExportNamespace + "') as the bundle export namespace. You can specify a namespace as a parameter to the 'export' method call.");
                 }            
             });
         } else {
