@@ -14,7 +14,7 @@ var isMavenBuild = fs.existsSync(cwd + '/pom.xml');
 var hasJenkinsJsModulesDependency = hasJenkinsJsModulesDep();
 
 var bundles = []; // see exports.bundle function
-var bundleTaskNames = [];
+var bundleDependencyTaskNames = ['log-env'];
 
 var adjunctBasePath = './target/generated-adjuncts/';
 var jsmodulesBasePath = './src/main/webapp/jsmodules/';
@@ -29,8 +29,6 @@ if (isMavenBuild) {
     srcPaths = ['./js', './less'];
     testSrcPath = './spec';    
 }
-gutil.log(gutil.colors.green(" - src: " + srcPaths));
-gutil.log(gutil.colors.green(" - test: " + testSrcPath));
 
 exports.gulp = gulp;
 exports.browserify = browserify;
@@ -40,6 +38,12 @@ exports.defineTasks = function(tasknames) {
         tasknames = ['test'];
     }
     
+    gulp.task('log-env', function() {
+        exports.logInfo("Source Dirs:");
+        exports.logInfo(" - src: " + srcPaths);
+        exports.logInfo(" - test: " + testSrcPath);    
+    });
+
     var defaults = [];
     
     for (var i = 0; i < tasknames.length; i++) {
@@ -68,7 +72,7 @@ exports.defineTask = function(taskname, gulpTask) {
         gulp.task('test', ['bundle'], gulpTask);
     } else if (taskname === 'bundle') {
         // Define the bundle task so that it depends on the "sub" bundle tasks.
-        gulp.task('bundle', bundleTaskNames, gulpTask);
+        gulp.task('bundle', bundleDependencyTaskNames, gulpTask);
     } else if (taskname === 'rebundle') {
         // Run bundle at the start of rebundle
         gulp.task('rebundle', ['bundle'], gulpTask);
@@ -253,7 +257,7 @@ exports.bundle = function(moduleToBundle, as) {
                 // Use the maven artifactId as the namespace.
                 bundle.bundleExportNamespace = pom.project.artifactId[0];
                 if (pom.project.packaging[0] !== 'hpi') {
-                    exports.logWarn("\t- Bundling process will use the maven pom artifactId ('" + bundle.bundleExportNamespace + "') as the bundle export namespace. You can specify a namespace as a parameter to the 'export' method call.");
+                    exports.logWarn("\t-Bundling process will use the maven pom artifactId ('" + bundle.bundleExportNamespace + "') as the bundle export namespace. You can specify a namespace as a parameter to the 'export' method call.");
                 }            
             });
         } else {
@@ -283,7 +287,7 @@ exports.bundle = function(moduleToBundle, as) {
             bundleTaskName += '_no_imports';
         }
         
-        bundleTaskNames.push(bundleTaskName);
+        bundleDependencyTaskNames.push(bundleTaskName);
         
         exports.defineTask(bundleTaskName, function() {
             if (!bundle.bundleToAdjunctPackageDir && !bundle.bundleAsJenkinsModule && !bundle.bundleInDir) {
