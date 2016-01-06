@@ -257,7 +257,7 @@ exports.bundle = function(moduleToBundle, as) {
                 // Use the maven artifactId as the namespace.
                 bundle.bundleExportNamespace = pom.project.artifactId[0];
                 if (pom.project.packaging[0] !== 'hpi') {
-                    exports.logWarn("\t-Bundling process will use the maven pom artifactId ('" + bundle.bundleExportNamespace + "') as the bundle export namespace. You can specify a namespace as a parameter to the 'export' method call.");
+                    exports.logWarn("\t- Bundling process will use the maven pom artifactId ('" + bundle.bundleExportNamespace + "') as the bundle export namespace. You can specify a namespace as a parameter to the 'export' method call.");
                 }            
             });
         } else {
@@ -316,7 +316,7 @@ exports.bundle = function(moduleToBundle, as) {
                 if (bundle.bundleAsJenkinsModule) {
                     // If it's a jenkins module, the CSS etc need to go into a folder under jsmodulesBasePath
                     // and the name of the folder must be the module name
-                    lessBundleTo += '/' + bundleTaskName;
+                    lessBundleTo += bundle.as;
                 } else if (bundle.lessTargetDir) {
                     lessBundleTo = bundle.lessTargetDir;
                 }
@@ -582,7 +582,7 @@ function less(src, targetDir) {
     gulp.src(src)
         .pipe(less())
         .pipe(gulp.dest(targetDir));
-    exports.logInfo('LESS CSS pre-processing completed.');
+    exports.logInfo("LESS CSS pre-processing completed to '" + targetDir + "'.");
 }
 
 function _startTestWebServer(config) {
