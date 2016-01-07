@@ -1,5 +1,7 @@
 # Jenkins JS Builder
 
+> __[JIRA](https://issues.jenkins-ci.org/browse/JENKINS/component/21132)__
+
 __Table of Contents__:
 <p>
 <ul>
@@ -13,6 +15,7 @@ __Table of Contents__:
     <a href="#command-line-options">Command line options</a><br/>
     <a href="#maven-integration">Maven Integration</a><br/>
     <a href="https://github.com/jenkinsci/js-samples">Sample Plugins (Jenkins - HPI)</a><br/>    
+    <a href="https://issues.jenkins-ci.org/browse/JENKINS/component/21132">JIRA</a><br/>    
 </ul>    
 </p>
 
