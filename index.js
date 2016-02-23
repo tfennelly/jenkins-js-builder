@@ -125,8 +125,8 @@ exports.onTaskEnd = function(taskName, callback) {
 };
 
 function normalizePath(path) {
-    path = _string.ltrim(path, './')
-    path = _string.ltrim(path, '/')
+    path = _string.ltrim(path, './');
+    path = _string.ltrim(path, '/');
     path = _string.rtrim(path, '/');
     
     return path;
@@ -396,13 +396,13 @@ exports.bundle = function(moduleToBundle, as) {
 
 exports.logInfo = function(message) {
     gutil.log(gutil.colors.green(message));
-}
+};
 exports.logWarn = function(message) {
     gutil.log(gutil.colors.magenta(message));
-}
+};
 exports.logError = function(message) {
     gutil.log(gutil.colors.red(message));
-}
+};
 
 var tasks = {
     test: function () {
@@ -439,7 +439,6 @@ var tasks = {
     bundle: function() {
         if (bundles.length === 0) {
             exports.logWarn("Warning: Skipping 'bundle' task. No 'module' bundles are registered. Call require('jenkins-js-build').bundle([module]) in gulpfile.js.");
-            return;
         }
     },
     rebundle: function() {
@@ -602,7 +601,7 @@ function _startTestWebServer(config) {
         exports.logInfo('Testing web server started on port ' + config.port + ' (http://localhost:' + config.port + '). Content root: ' + config.root);
     }
 }
-gulp.on('testing_completed', function(x) {
+gulp.on('testing_completed', function() {
     if (testWebServer) {
         testWebServer.close();
         testWebServer = undefined;
