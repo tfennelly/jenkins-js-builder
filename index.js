@@ -404,6 +404,8 @@ exports.logError = function(message) {
     gutil.log(gutil.colors.red(message));
 };
 
+exports.getDependency = getDependency;
+
 var tasks = {
     test: function () {
         if (!testSrcPath) {
@@ -617,18 +619,48 @@ function _stopTestWebServer() {
     }
 }
 
-function hasJenkinsJsModulesDep() {
+function getDependency(depName) {
     var packageJson = require(cwd + '/package.json');
     
-    function findJenkinsJsModulesDep(onDepMap) {
+    function findDep(onDepMap) {
         if (onDepMap) {
-            return (onDepMap['jenkins-js-modules'] !== undefined);
+            return onDepMap[depName];
         }
-        return false;
+        return undefined;
     }
     
-    return (findJenkinsJsModulesDep(packageJson.dependencies) || findJenkinsJsModulesDep(packageJson.devDependencies));
+    var version = findDep(packageJson.dependencies);
+    if (version) {
+        return {
+            type: 'runtime',
+            version: version
+        };
+    } else {
+        version = findDep(packageJson.devDependencies);
+        if (version) {
+            return {
+                type: 'dev',
+                version: version
+            };
+        } else {
+            version = findDep(packageJson.peerDependencies);
+            if (version) {
+                return {
+                    type: 'peer',
+                    version: version
+                };
+            }
+            // TODO: bundled and optional deps?
+        }
+    }
+    
+    return undefined;
 }
+
+function hasJenkinsJsModulesDep() {
+    return (getDependency('jenkins-js-modules') !== undefined);
+}
+
 function assertHasJenkinsJsModulesDependency(message) {
     if(!hasJenkinsJsModulesDependency) {
         if (!message) {
