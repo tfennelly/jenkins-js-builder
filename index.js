@@ -9,10 +9,10 @@ var _string = require('underscore.string');
 var fs = require('fs');
 var logger = require('./internal/logger');
 var dependencies = require('./internal/dependecies');
+var maven = require('./internal/maven');
 var testWebServer;
 
 var cwd = process.cwd();
-var isMavenBuild = fs.existsSync(cwd + '/pom.xml');
 var hasJenkinsJsModulesDependency = dependencies.hasJenkinsJsModulesDep();
 
 var bundles = []; // see exports.bundle function
@@ -23,8 +23,11 @@ var jsmodulesBasePath = './src/main/webapp/jsmodules/';
 
 var srcPaths;
 var testSrcPath;
-if (isMavenBuild) {
-    gutil.log(gutil.colors.green("Maven project"));
+if (maven.isMavenProject) {
+    logger.logInfo("Maven project.");
+    if (maven.isHPI()) {
+        logger.logInfo("\t- Jenkins plugin (HPI): " + maven.getArtifactId());
+    }
     srcPaths = ['src/main/js','src/main/less'];
     testSrcPath = 'src/test/js';    
 } else {
@@ -253,18 +256,13 @@ exports.bundle = function(moduleToBundle, as) {
         if (toNamespace) {
             bundle.bundleExport = true;
             bundle.bundleExportNamespace = toNamespace;
-        } else if (isMavenBuild) {
-            var xmlParser = require('xml2js').parseString;
-            var pomXML = fs.readFileSync('pom.xml', "utf-8");
-
+        } else if (maven.isMavenProject) {
             bundle.bundleExport = true;
-            xmlParser(pomXML, function (err, pom) {
-                // Use the maven artifactId as the namespace.
-                bundle.bundleExportNamespace = pom.project.artifactId[0];
-                if (pom.project.packaging[0] !== 'hpi') {
-                    logger.logWarn("\t- Bundling process will use the maven pom artifactId ('" + bundle.bundleExportNamespace + "') as the bundle export namespace. You can specify a namespace as a parameter to the 'export' method call.");
-                }            
-            });
+            // Use the maven artifactId as the namespace.
+            bundle.bundleExportNamespace = maven.getArtifactId();
+            if (!maven.isHPI()) {
+                logger.logWarn("\t- Bundling process will use the maven pom artifactId ('" + bundle.bundleExportNamespace + "') as the bundle export namespace. You can specify a namespace as a parameter to the 'export' method call.");
+            }
         } else {
             gutil.log(gutil.colors.red("Error: This is not a maven project. You must define a 'toNamespace' argument to the 'export' call."));
             return;
