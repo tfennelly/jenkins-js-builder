@@ -1,13 +1,13 @@
 describe("dependencies test", function () {
 
     it("- test", function () {
-        var builder = require('../dependecies');
+        var dependecies = require('../dependecies');
         var dep;
         
-        dep = builder.getDependency('jenkins-js-modules');
+        dep = dependecies.getDependency('jenkins-js-modules');
         expect(dep.type).toBe('runtime');
         
-        dep = builder.getDependency('zombie');
+        dep = dependecies.getDependency('zombie');
         expect(dep.type).toBe('dev');
     });
 });
