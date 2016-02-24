@@ -1,6 +1,7 @@
 var logger = require('./logger');
 var maven = require('./maven');
 var path = require('path');
+var fs = require('fs');
 var cwd = process.cwd();
 
 if (maven.isMavenProject) {
@@ -27,4 +28,24 @@ exports.getAbsoluteJSRoot = function() {
  */
 exports.toAbsoluteJSPath = function(jsPath) {
     return path.resolve(exports.getAbsoluteJSRoot(), jsPath);
+};
+
+/**
+ * Create the directory path, including missing parent dirs.
+ * <p>
+ * Equivalent to <code>mkdir -p</code>.
+ * 
+ * @param thePath The dir path to create.
+ */
+exports.mkdirp = function(thePath) {
+    if (!path.isAbsolute(thePath)) {
+        thePath = path.resolve(cwd, thePath);
+    }
+    if (!fs.existsSync(thePath)) {
+        var parentDir = path.dirname(thePath);
+        if (!fs.existsSync(parentDir)) {
+            exports.mkdirp(parentDir);
+        }
+        fs.mkdirSync(thePath);
+    }
 };
