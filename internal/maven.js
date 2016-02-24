@@ -19,7 +19,11 @@ exports.getArtifactId = function() {
 
 exports.getPackaging = function() {
     assertIsMavenProject();
-    return exports.pom.project.packaging[0];
+    if (exports.pom.project.packaging) {
+        return exports.pom.project.packaging[0];
+    } else {
+        return 'jar';
+    }
 };
 
 exports.isHPI = function() {
