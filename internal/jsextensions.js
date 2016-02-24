@@ -2,6 +2,7 @@ var dependencies = require('./dependecies');
 var maven = require('./maven');
 var fs = require('fs');
 var cwd = process.cwd();
+var paths = require('./paths');
 
 var jsExtensionsYAMLFile = cwd + '/src/main/resources/jenkins-js-extension.yaml';
 var hasJenkinsJSExtensionsFile = fs.existsSync(jsExtensionsYAMLFile);
@@ -33,6 +34,7 @@ exports.transformToJSON = function() {
         dependencies.assertHasJenkinsJsExtensionsDependency('Your project defines a jenkins-js-extensions.yaml file\n\t- Path: ' + jsExtensionsYAMLFile);
         var jsExtensionsJSONFile = cwd + '/target/classes/jenkins-js-extension.json';
         
+        paths.mkdirp('target/classes');
         exports.yamlToJSON(jsExtensionsYAMLFile, jsExtensionsJSONFile, function(json) {
             if (maven.isHPI()) {
                 json.hpiPluginId = maven.getArtifactId();
