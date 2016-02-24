@@ -44,7 +44,7 @@ exports.hasJenkinsJsModulesDep = function() {
 };
 
 exports.hasJenkinsJsExtensionsDep = function() {
-    return (exports.getDependency('jenkins-js-extensions') !== undefined);
+    return (exports.getDependency('@jenkins-cd/js-extensions') !== undefined);
 };
 
 exports.exitOnMissingDependency = function(depName, message) {
@@ -63,6 +63,6 @@ exports.assertHasJenkinsJsModulesDependency = function(message) {
 
 exports.assertHasJenkinsJsExtensionsDependency = function(message) {
     if(!exports.hasJenkinsJsExtensionsDep()) {
-        exports.exitOnMissingDependency('jenkins-js-extensions', message);
+        exports.exitOnMissingDependency('@jenkins-cd/js-extensions', message);
     }
 };
