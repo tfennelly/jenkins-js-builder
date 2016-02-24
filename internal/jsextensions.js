@@ -26,7 +26,7 @@ exports.transformToJSON = function() {
     // If there's a jenkins-js-extensions.yaml, transform it to jenkins-js-extensions.json
     // in the target/classes dir, making it easier to consume on the backend (HPI extension discovery).
     if (hasJenkinsJSExtensionsFile) {
-        dependencies.assertHasJenkinsJsExtensionsDependency('Your project defines a jenkins-js-extensions.yaml file (' + jsExtensionsYAMLFile + ').');
+        dependencies.assertHasJenkinsJsExtensionsDependency('Your project defines a jenkins-js-extensions.yaml file\n\t- Path: ' + jsExtensionsYAMLFile);
         var jsExtensionsJSONFile = cwd + '/target/classes/jenkins-js-extension.json';
         
         exports.yamlToJSON(jsExtensionsYAMLFile, jsExtensionsJSONFile);

@@ -1,6 +1,7 @@
 var fs = require('fs');
 var cwd = process.cwd();
 var packageJson = require(cwd + '/package.json');
+var logger = require('./logger');
 
 exports.getDependency = function(depName) {
     function findDep(onDepMap) {
@@ -50,7 +51,7 @@ exports.exitOnMissingDependency = function(depName, message) {
     if (!message) {
         message = 'Missing required NPM dependency.';
     }
-    exports.logError(message + '\n\t- You must install the ' + depName + ' NPM package i.e. npm install --save ' + depName);
+    logger.logError(message + '\n\t- You must install the ' + depName + ' NPM package i.e. npm install --save ' + depName);
     process.exit(1);
 };
 
