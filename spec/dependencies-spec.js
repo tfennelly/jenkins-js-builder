@@ -1,7 +1,7 @@
 describe("dependencies test", function () {
 
     it("- test", function () {
-        var dependecies = require('../dependecies');
+        var dependecies = require('../internal/dependecies');
         var dep;
         
         dep = dependecies.getDependency('jenkins-js-modules');

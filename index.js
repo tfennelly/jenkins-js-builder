@@ -7,7 +7,7 @@ var source = require('vinyl-source-stream');
 var transformTools = require('browserify-transform-tools');
 var _string = require('underscore.string');
 var fs = require('fs');
-var dependencies = require('./dependecies');
+var dependencies = require('./internal/dependecies');
 var testWebServer;
 
 var cwd = process.cwd();
@@ -34,7 +34,7 @@ if (isMavenBuild) {
 exports.gulp = gulp;
 exports.browserify = browserify;
 
-jsextensions = require('./jsextensions');
+jsextensions = require('./internal/jsextensions');
 jsextensions.transformToJSON();
 
 exports.defineTasks = function(tasknames) {
