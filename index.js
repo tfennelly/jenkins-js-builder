@@ -7,6 +7,7 @@ var source = require('vinyl-source-stream');
 var transformTools = require('browserify-transform-tools');
 var _string = require('underscore.string');
 var fs = require('fs');
+var logger = require('./internal/logger');
 var dependencies = require('./internal/dependecies');
 var testWebServer;
 
@@ -43,9 +44,9 @@ exports.defineTasks = function(tasknames) {
     }
     
     gulp.task('log-env', function() {
-        exports.logInfo("Source Dirs:");
-        exports.logInfo(" - src: " + srcPaths);
-        exports.logInfo(" - test: " + testSrcPath);    
+        logger.logInfo("Source Dirs:");
+        logger.logInfo(" - src: " + srcPaths);
+        logger.logInfo(" - test: " + testSrcPath);    
     });
 
     var defaults = [];
@@ -65,7 +66,7 @@ exports.defineTasks = function(tasknames) {
     }
     
     if (defaults.length > 0) {
-        exports.logInfo('Setting defaults');
+        logger.logInfo('Setting defaults');
         gulp.task('default', defaults);
     }    
 };
@@ -109,7 +110,7 @@ exports.tests = function(path) {
 exports.startTestWebServer = function(config) {
     _stopTestWebServer();
     _startTestWebServer(config);
-    exports.logInfo("\t(call require('gulp').emit('testing_completed') when testing is completed - watch async test execution)");
+    logger.logInfo("\t(call require('gulp').emit('testing_completed') when testing is completed - watch async test execution)");
 };
 
 exports.onTaskStart = function(taskName, callback) {
@@ -223,7 +224,7 @@ exports.bundle = function(moduleToBundle, as) {
         
         if (!from || !to) {
             var message = "Cannot call 'withExternalModuleMapping' without defining both 'to' and 'from' module names.";
-            exports.logError(message);
+            logger.logError(message);
             throw message;
         }
         
@@ -261,14 +262,14 @@ exports.bundle = function(moduleToBundle, as) {
                 // Use the maven artifactId as the namespace.
                 bundle.bundleExportNamespace = pom.project.artifactId[0];
                 if (pom.project.packaging[0] !== 'hpi') {
-                    exports.logWarn("\t- Bundling process will use the maven pom artifactId ('" + bundle.bundleExportNamespace + "') as the bundle export namespace. You can specify a namespace as a parameter to the 'export' method call.");
+                    logger.logWarn("\t- Bundling process will use the maven pom artifactId ('" + bundle.bundleExportNamespace + "') as the bundle export namespace. You can specify a namespace as a parameter to the 'export' method call.");
                 }            
             });
         } else {
             gutil.log(gutil.colors.red("Error: This is not a maven project. You must define a 'toNamespace' argument to the 'export' call."));
             return;
         }
-        exports.logInfo("\t- Bundle will be exported as '" + bundle.bundleExportNamespace + ":" + bundle.as + "'.");
+        logger.logInfo("\t- Bundle will be exported as '" + bundle.bundleExportNamespace + ":" + bundle.as + "'.");
     };
     
     bundle.findModuleMapping = function(from) {
@@ -295,7 +296,7 @@ exports.bundle = function(moduleToBundle, as) {
         
         exports.defineTask(bundleTaskName, function() {
             if (!bundle.bundleToAdjunctPackageDir && !bundle.bundleAsJenkinsModule && !bundle.bundleInDir) {
-                exports.logError("Error: Cannot perform 'bundle' task. No bundle output spec defined. You must call 'inAdjunctPackage([adjunct-package-name])' or 'asJenkinsModuleResource' or 'inDir([dir])' on the response return from the call to 'bundle'.");
+                logger.logError("Error: Cannot perform 'bundle' task. No bundle output spec defined. You must call 'inAdjunctPackage([adjunct-package-name])' or 'asJenkinsModuleResource' or 'inDir([dir])' on the response return from the call to 'bundle'.");
                 throw "'bundle' task failed. See error above.";
             }
 
@@ -398,20 +399,10 @@ exports.bundle = function(moduleToBundle, as) {
     return bundle;
 };
 
-exports.logInfo = function(message) {
-    gutil.log(gutil.colors.green(message));
-};
-exports.logWarn = function(message) {
-    gutil.log(gutil.colors.magenta(message));
-};
-exports.logError = function(message) {
-    gutil.log(gutil.colors.red(message));
-};
-
 var tasks = {
     test: function () {
         if (!testSrcPath) {
-            exports.logWarn("Warn: Test src path has been unset. No tests to run.");
+            logger.logWarn("Warn: Test src path has been unset. No tests to run.");
             return;
         }
         
@@ -427,7 +418,7 @@ var tasks = {
         });
 
         var testSpecs = testSrcPath + '/**/' + argvValue('--test', '') + '*-spec.js';
-        exports.logInfo('Test specs: ' + testSpecs);
+        logger.logInfo('Test specs: ' + testSpecs);
         
         global.jenkinsBuilder = exports;
         _startTestWebServer();
@@ -438,11 +429,11 @@ var tasks = {
                 }                
             }]}));
 
-        exports.logInfo('Test execution completed.');
+        logger.logInfo('Test execution completed.');
     },
     bundle: function() {
         if (bundles.length === 0) {
-            exports.logWarn("Warning: Skipping 'bundle' task. No 'module' bundles are registered. Call require('jenkins-js-build').bundle([module]) in gulpfile.js.");
+            logger.logWarn("Warning: Skipping 'bundle' task. No 'module' bundles are registered. Call require('jenkins-js-build').bundle([module]) in gulpfile.js.");
         }
     },
     rebundle: function() {
@@ -454,7 +445,7 @@ var tasks = {
             watchList.push(srcPath + '/*.*');
             watchList.push(srcPath + '/**/*.*');
         }
-        exports.logInfo('rebundle watch list: ' + watchList);
+        logger.logInfo('rebundle watch list: ' + watchList);
         
         gulp.watch(watchList, ['bundle']);
     },
@@ -464,7 +455,7 @@ var tasks = {
         var jshintConfig;
         
         if (!hasJsHintConfig) {
-            exports.logInfo('\t- Using default JSHint configuration (in jenkins-js-builder). Override by defining a .jshintrc in this folder.');
+            logger.logInfo('\t- Using default JSHint configuration (in jenkins-js-builder). Override by defining a .jshintrc in this folder.');
             jshintConfig = require('./res/default.jshintrc');
         }        
         function runJsHint(pathSet) {
@@ -585,7 +576,7 @@ function less(src, targetDir) {
     gulp.src(src)
         .pipe(less())
         .pipe(gulp.dest(targetDir));
-    exports.logInfo("LESS CSS pre-processing completed to '" + targetDir + "'.");
+    logger.logInfo("LESS CSS pre-processing completed to '" + targetDir + "'.");
 }
 
 function _startTestWebServer(config) {
@@ -602,14 +593,14 @@ function _startTestWebServer(config) {
     if (!testWebServer) {
         // Start a web server that will allow tests to request resources.
         testWebServer = require('node-http-server').deploy(config);
-        exports.logInfo('Testing web server started on port ' + config.port + ' (http://localhost:' + config.port + '). Content root: ' + config.root);
+        logger.logInfo('Testing web server started on port ' + config.port + ' (http://localhost:' + config.port + '). Content root: ' + config.root);
     }
 }
 gulp.on('testing_completed', function() {
     if (testWebServer) {
         testWebServer.close();
         testWebServer = undefined;
-        exports.logInfo('Testing web server stopped.');
+        logger.logInfo('Testing web server stopped.');
     }
 });
 
@@ -617,7 +608,7 @@ function _stopTestWebServer() {
     if (testWebServer) {
         testWebServer.close();
         testWebServer = undefined;
-        exports.logInfo('Testing web server stopped.');
+        logger.logInfo('Testing web server stopped.');
     }
 }
 
