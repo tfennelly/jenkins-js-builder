@@ -8,6 +8,7 @@ var transformTools = require('browserify-transform-tools');
 var _string = require('underscore.string');
 var fs = require('fs');
 var logger = require('./internal/logger');
+var paths = require('./internal/paths');
 var dependencies = require('./internal/dependecies');
 var maven = require('./internal/maven');
 var testWebServer;
@@ -21,18 +22,11 @@ var bundleDependencyTaskNames = ['log-env'];
 var adjunctBasePath = './target/generated-adjuncts/';
 var jsmodulesBasePath = './src/main/webapp/jsmodules/';
 
-var srcPaths;
-var testSrcPath;
 if (maven.isMavenProject) {
     logger.logInfo("Maven project.");
     if (maven.isHPI()) {
         logger.logInfo("\t- Jenkins plugin (HPI): " + maven.getArtifactId());
     }
-    srcPaths = ['src/main/js','src/main/less'];
-    testSrcPath = 'src/test/js';    
-} else {
-    srcPaths = ['./js', './less'];
-    testSrcPath = './spec';    
 }
 
 exports.gulp = gulp;
@@ -48,8 +42,8 @@ exports.defineTasks = function(tasknames) {
     
     gulp.task('log-env', function() {
         logger.logInfo("Source Dirs:");
-        logger.logInfo(" - src: " + srcPaths);
-        logger.logInfo(" - test: " + testSrcPath);    
+        logger.logInfo(" - src: " + paths.srcPaths);
+        logger.logInfo(" - test: " + paths.testSrcPath);    
     });
 
     var defaults = [];
@@ -91,23 +85,23 @@ exports.defineTask = function(taskname, gulpTask) {
 
 exports.src = function(paths) {
     if (paths) {
-        srcPaths = [];
+        paths.srcPaths = [];
         if (typeof paths === 'string') {
-            srcPaths.push(normalizePath(paths));
+            paths.srcPaths.push(normalizePath(paths));
         } else if (paths.constructor === Array) {
             for (var i = 0; i < paths.length; i++) {
-                srcPaths.push(normalizePath(paths[i]));
+                paths.srcPaths.push(normalizePath(paths[i]));
             }
         }
     }
-    return srcPaths;
+    return paths.srcPaths;
 };
 
 exports.tests = function(path) {
     if (path) {
-        testSrcPath = normalizePath(path);
+        paths.testSrcPath = normalizePath(path);
     }
-    return testSrcPath;
+    return paths.testSrcPath;
 };
 
 exports.startTestWebServer = function(config) {
@@ -399,7 +393,7 @@ exports.bundle = function(moduleToBundle, as) {
 
 var tasks = {
     test: function () {
-        if (!testSrcPath) {
+        if (!paths.testSrcPath) {
             logger.logWarn("Warn: Test src path has been unset. No tests to run.");
             return;
         }
@@ -415,7 +409,7 @@ var tasks = {
             filePrefix: 'JasmineReport'    
         });
 
-        var testSpecs = testSrcPath + '/**/' + argvValue('--test', '') + '*-spec.js';
+        var testSpecs = paths.testSrcPath + '/**/' + argvValue('--test', '') + '*-spec.js';
         logger.logInfo('Test specs: ' + testSpecs);
         
         global.jenkinsBuilder = exports;
@@ -438,8 +432,8 @@ var tasks = {
         var watchList = [];
 
         watchList.push('./index.js');
-        for (var i = 0; i < srcPaths.length; i++) {
-            var srcPath = srcPaths[i];
+        for (var i = 0; i < paths.srcPaths.length; i++) {
+            var srcPath = paths.srcPaths[i];
             watchList.push(srcPath + '/*.*');
             watchList.push(srcPath + '/**/*.*');
         }
@@ -464,8 +458,8 @@ var tasks = {
                     .pipe(jshint.reporter('fail'));
             }
         }
-        runJsHint(srcPaths);
-        runJsHint([testSrcPath]);        
+        runJsHint(paths.srcPaths);
+        runJsHint([paths.testSrcPath]);        
     }
 };
 
