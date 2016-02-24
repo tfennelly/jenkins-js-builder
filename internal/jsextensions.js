@@ -1,4 +1,5 @@
 var dependencies = require('./dependecies');
+var maven = require('./maven');
 var fs = require('fs');
 var cwd = process.cwd();
 
@@ -17,8 +18,11 @@ exports.getJSExtensions = function() {
     return exports.readYAMLFile(jsExtensionsYAMLFile);
 };
 
-exports.yamlToJSON = function(sourceFile, targetFile) {
+exports.yamlToJSON = function(sourceFile, targetFile, transformer) {
     var asJSON = exports.readYAMLFile(sourceFile);
+    if (transformer) {
+        asJSON = transformer(asJSON);
+    }
     fs.writeFileSync(targetFile, JSON.stringify(asJSON, undefined, 4));
 };
 
@@ -29,6 +33,11 @@ exports.transformToJSON = function() {
         dependencies.assertHasJenkinsJsExtensionsDependency('Your project defines a jenkins-js-extensions.yaml file\n\t- Path: ' + jsExtensionsYAMLFile);
         var jsExtensionsJSONFile = cwd + '/target/classes/jenkins-js-extension.json';
         
-        exports.yamlToJSON(jsExtensionsYAMLFile, jsExtensionsJSONFile);
+        exports.yamlToJSON(jsExtensionsYAMLFile, jsExtensionsJSONFile, function(json) {
+            if (maven.isHPI()) {
+                json.hpiPluginId = maven.getArtifactId();
+            }
+            return json;
+        });
     }
 };
