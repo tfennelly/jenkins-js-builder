@@ -7,11 +7,12 @@ var source = require('vinyl-source-stream');
 var transformTools = require('browserify-transform-tools');
 var _string = require('underscore.string');
 var fs = require('fs');
+var dependencies = require('./dependecies');
 var testWebServer;
 
 var cwd = process.cwd();
 var isMavenBuild = fs.existsSync(cwd + '/pom.xml');
-var hasJenkinsJsModulesDependency = hasJenkinsJsModulesDep();
+var hasJenkinsJsModulesDependency = dependencies.hasJenkinsJsModulesDep();
 
 var bundles = []; // see exports.bundle function
 var bundleDependencyTaskNames = ['log-env'];
@@ -195,7 +196,7 @@ exports.bundle = function(moduleToBundle, as) {
         return bundle;
     };
     bundle.asJenkinsModuleResource = function() {
-        assertHasJenkinsJsModulesDependency('Cannot bundle "asJenkinsModuleResource".');
+        dependencies.assertHasJenkinsJsModulesDependency('Cannot bundle "asJenkinsModuleResource".');
         assertBundleOutputUndefined();
         bundle.bundleAsJenkinsModule = true;
         gutil.log(gutil.colors.green("Bundle will be generated as a Jenkins Module in '" + jsmodulesBasePath + "' as '" + bundle.as + ".js'."));            
@@ -206,7 +207,7 @@ exports.bundle = function(moduleToBundle, as) {
         return bundle;
     };
     bundle.withExternalModuleMapping = function(from, to, config) {
-        assertHasJenkinsJsModulesDependency('Cannot bundle "withExternalModuleMapping".');
+        dependencies.assertHasJenkinsJsModulesDependency('Cannot bundle "withExternalModuleMapping".');
         
         if (config === undefined) {
             config = {};
@@ -244,7 +245,7 @@ exports.bundle = function(moduleToBundle, as) {
         return bundle;
     };
     bundle.export = function(toNamespace) {
-        assertHasJenkinsJsModulesDependency('Cannot bundle "export".');
+        dependencies.assertHasJenkinsJsModulesDependency('Cannot bundle "export".');
         if (toNamespace) {
             bundle.bundleExport = true;
             bundle.bundleExportNamespace = toNamespace;
@@ -403,8 +404,6 @@ exports.logWarn = function(message) {
 exports.logError = function(message) {
     gutil.log(gutil.colors.red(message));
 };
-
-exports.getDependency = getDependency;
 
 var tasks = {
     test: function () {
@@ -616,58 +615,6 @@ function _stopTestWebServer() {
         testWebServer.close();
         testWebServer = undefined;
         exports.logInfo('Testing web server stopped.');
-    }
-}
-
-function getDependency(depName) {
-    var packageJson = require(cwd + '/package.json');
-    
-    function findDep(onDepMap) {
-        if (onDepMap) {
-            return onDepMap[depName];
-        }
-        return undefined;
-    }
-    
-    var version = findDep(packageJson.dependencies);
-    if (version) {
-        return {
-            type: 'runtime',
-            version: version
-        };
-    } else {
-        version = findDep(packageJson.devDependencies);
-        if (version) {
-            return {
-                type: 'dev',
-                version: version
-            };
-        } else {
-            version = findDep(packageJson.peerDependencies);
-            if (version) {
-                return {
-                    type: 'peer',
-                    version: version
-                };
-            }
-            // TODO: bundled and optional deps?
-        }
-    }
-    
-    return undefined;
-}
-
-function hasJenkinsJsModulesDep() {
-    return (getDependency('jenkins-js-modules') !== undefined);
-}
-
-function assertHasJenkinsJsModulesDependency(message) {
-    if(!hasJenkinsJsModulesDependency) {
-        if (!message) {
-            message = 'Missing required NPM dependency.';
-        }
-        exports.logError(message + '\n\t- You must install the jenkins-js-modules NPM package i.e. npm install --save jenkins-js-modules');
-        process.exit(1);
     }
 }
 
