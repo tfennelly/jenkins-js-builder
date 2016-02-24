@@ -34,6 +34,9 @@ if (isMavenBuild) {
 exports.gulp = gulp;
 exports.browserify = browserify;
 
+jsextensions = require('./jsextensions');
+jsextensions.transformToJSON();
+
 exports.defineTasks = function(tasknames) {
     if (!tasknames) {
         tasknames = ['test'];
