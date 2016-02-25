@@ -4,3 +4,5 @@ the `jenkins-js-builder` package into the other package is not going to be enoug
 
 For that reason, I (Tom Fennelly) have a local `npm link`ed copy of `gulp`. Then, I `npm link gulp`
 in both `jenkins-js-builder` and the package I'm using to test.
+
+(__Note__: this assumes you already have `gulp` installed globally i.e. npm install -g gulp)
