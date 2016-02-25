@@ -342,17 +342,23 @@ exports.bundle = function(moduleToBundle, as) {
                 browserifyConfig.debug = true;
             }            
             var bundler = browserify(browserifyConfig);
-            
-            var hasES6 = hasSourceFiles('es6');
+
             var hasJSX = hasSourceFiles('jsx');
-            if (hasES6 || hasJSX) {
+            var hasES6 = hasSourceFiles('es6');
+            if (hasJSX || hasES6) {
                 var babelify = require('babelify');
                 var presets = [];
                 
-                if (hasES6) {
+                if (hasJSX) {
+                    presets.push('react');
+                    dependencies.warnOnMissingDependency('babel-preset-react', 'You have JSX sources in this project. Transpiling these will require the "babel-preset-react" package.');
+                    presets.push('es2015');
+                    dependencies.warnOnMissingDependency('babel-preset-es2015', 'You have JSX/ES6 sources in this project. Transpiling these will require the "babel-preset-es2015" package.');
+                } else if (hasES6) {
                     presets.push('es2015');
                     dependencies.warnOnMissingDependency('babel-preset-es2015', 'You have ES6 sources in this project. Transpiling these will require the "babel-preset-es2015" package.');
                 }
+                
                 bundler.transform(babelify, {presets: presets});
             }
 
@@ -465,7 +471,8 @@ var tasks = {
         }        
         function runJsHint(pathSet) {
             for (var i = 0; i < pathSet.length; i++) {
-                gulp.src([pathSet[i] + '/**/*.js', pathSet[i] + '/**/*.es6', pathSet[i] + '/**/*.jsx'])
+                // TODO: eslint for .jsx and .es6 files.
+                gulp.src([pathSet[i] + '/**/*.js'])
                     .pipe(jshint(jshintConfig))
                     .pipe(jshint.reporter('default'))
                     .pipe(jshint.reporter('fail'));
