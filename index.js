@@ -83,23 +83,23 @@ exports.defineTask = function(taskname, gulpTask) {
     }
 };
 
-exports.src = function(paths) {
-    if (paths) {
+exports.src = function(newPaths) {
+    if (newPaths) {
         paths.srcPaths = [];
-        if (typeof paths === 'string') {
-            paths.srcPaths.push(normalizePath(paths));
-        } else if (paths.constructor === Array) {
-            for (var i = 0; i < paths.length; i++) {
-                paths.srcPaths.push(normalizePath(paths[i]));
+        if (typeof newPaths === 'string') {
+            paths.srcPaths.push(normalizePath(newPaths));
+        } else if (newPaths.constructor === Array) {
+            for (var i = 0; i < newPaths.length; i++) {
+                paths.srcPaths.push(normalizePath(newPaths[i]));
             }
         }
     }
     return paths.srcPaths;
 };
 
-exports.tests = function(path) {
-    if (path) {
-        paths.testSrcPath = normalizePath(path);
+exports.tests = function(newPath) {
+    if (newPath) {
+        paths.testSrcPath = normalizePath(newPath);
     }
     return paths.testSrcPath;
 };
