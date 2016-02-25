@@ -333,7 +333,7 @@ exports.bundle = function(moduleToBundle, as) {
 
             var browserifyConfig = {
                 entries: [fileToBundle],
-                extensions: ['.js', '.hbs'],
+                extensions: ['.js', '.es6', '.jsx', '.hbs'],
                 cache: {},
                 packageCache: {},
                 fullPaths: false
@@ -342,6 +342,19 @@ exports.bundle = function(moduleToBundle, as) {
                 browserifyConfig.debug = true;
             }            
             var bundler = browserify(browserifyConfig);
+            
+            var hasES6 = hasSourceFiles('es6');
+            var hasJSX = hasSourceFiles('jsx');
+            if (hasES6 || hasJSX) {
+                var babelify = require('babelify');
+                var presets = [];
+                
+                if (hasES6) {
+                    presets.push('es2015');
+                    dependencies.warnOnMissingDependency('babel-preset-es2015', 'You have ES6 sources in this project. Transpiling these will require the "babel-preset-es2015" package.');
+                }
+                bundler.transform(babelify, {presets: presets});
+            }
 
             var hbsfy = require("hbsfy");
             if (applyImports && bundle.findModuleMapping('handlebars')) {
@@ -452,7 +465,7 @@ var tasks = {
         }        
         function runJsHint(pathSet) {
             for (var i = 0; i < pathSet.length; i++) {
-                gulp.src(pathSet[i] + '/**/*.js')
+                gulp.src([pathSet[i] + '/**/*.js', pathSet[i] + '/**/*.es6', pathSet[i] + '/**/*.jsx'])
                     .pipe(jshint(jshintConfig))
                     .pipe(jshint.reporter('default'))
                     .pipe(jshint.reporter('fail'));
@@ -624,6 +637,28 @@ function argvIndex(argv) {
         }
     }
     return -1;
+}
+
+function hasSourceFiles(ext) {
+    var glob = require('glob');
+    var hasFiles = false;
+    var options = {
+        nodir: true
+    };
+
+    function _hasFiles(path) {
+        var files = glob.sync(path + "**/*." + ext, options);
+        hasFiles = (files && files.length > 0);
+    }
+
+    for (var i = 0; hasFiles === false && i < paths.srcPaths.length; i++) {
+        _hasFiles(paths.srcPaths[i]);
+    }
+    if (hasFiles === false) {
+        _hasFiles(paths.testSrcPath);
+    }
+    
+    return hasFiles;
 }
 
 // Defined default tasks. Can be overridden.

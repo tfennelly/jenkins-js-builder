@@ -51,8 +51,19 @@ exports.exitOnMissingDependency = function(depName, message) {
     if (!message) {
         message = 'Missing required NPM dependency.';
     }
-    logger.logError(message + '\n\t- You must install the ' + depName + ' NPM package i.e. npm install --save ' + depName);
+    logger.logError(message + '\n\t- You must install the ' + depName + ' NPM package i.e. "npm install --save ' + depName + '" (use "--save-dev" to add as a devDependency)');
     process.exit(1);
+};
+
+exports.warnOnMissingDependency = function(depName, message) {
+    if (exports.getDependency(depName)) {
+        // It's there.
+        return;
+    }
+    if (!message) {
+        message = 'Missing NPM dependency "' + depName + '" (may be required).';
+    }
+    logger.logWarn(message + '\n\t- To install the ' + depName + ' NPM package, run "npm install --save ' + depName + '" (use "--save-dev" to add as a devDependency)');
 };
 
 exports.assertHasJenkinsJsModulesDependency = function(message) {
