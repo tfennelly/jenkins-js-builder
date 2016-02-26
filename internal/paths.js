@@ -13,6 +13,21 @@ if (maven.isMavenProject) {
 }
 
 /**
+ * Find the jenkins-js-extension.yaml file in the src paths.
+ */
+exports.findExtensionsYAMLFile = function() {
+    for (var i = 0; i < exports.srcPaths.length; i++) {
+        var srcPath = path.resolve(cwd, exports.srcPaths[i]);
+        var extFile = path.resolve(srcPath, 'jenkins-js-extension.yaml');
+        if (fs.existsSync(extFile)) {
+            return extFile;
+        }
+    }
+    
+    return undefined;
+};
+
+/**
  * Get the absolute path to the javascript src root directory.
  */
 exports.getAbsoluteJSRoot = function() {

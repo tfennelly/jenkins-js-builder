@@ -4,11 +4,10 @@ var fs = require('fs');
 var cwd = process.cwd();
 var paths = require('./paths');
 
-var jsExtensionsYAMLFile = cwd + '/src/main/resources/jenkins-js-extension.yaml';
-var hasJenkinsJSExtensionsFile = fs.existsSync(jsExtensionsYAMLFile);
+var jsExtensionsYAMLFile = paths.findExtensionsYAMLFile();
 
 exports.readYAMLFile = function(file) {
-    if (!fs.existsSync(file)) {
+    if (!file || !fs.existsSync(file)) {
         return undefined;
     }
     var rawYAML = fs.readFileSync(file, "utf-8");
@@ -30,7 +29,7 @@ exports.yamlToJSON = function(sourceFile, targetFile, transformer) {
 exports.transformToJSON = function() {
     // If there's a jenkins-js-extensions.yaml, transform it to jenkins-js-extensions.json
     // in the target/classes dir, making it easier to consume on the backend (HPI extension discovery).
-    if (hasJenkinsJSExtensionsFile) {
+    if (jsExtensionsYAMLFile) {
         dependencies.assertHasJenkinsJsExtensionsDependency('Your project defines a jenkins-js-extensions.yaml file\n\t- Path: ' + jsExtensionsYAMLFile);
         var jsExtensionsJSONFile = cwd + '/target/classes/jenkins-js-extension.json';
         
