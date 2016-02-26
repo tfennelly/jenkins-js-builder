@@ -32,9 +32,6 @@ if (maven.isMavenProject) {
 exports.gulp = gulp;
 exports.browserify = browserify;
 
-jsextensions = require('./internal/jsextensions');
-jsextensions.transformToJSON();
-
 exports.defineTasks = function(tasknames) {
     if (!tasknames) {
         tasknames = ['test'];
@@ -670,3 +667,6 @@ function hasSourceFiles(ext) {
 
 // Defined default tasks. Can be overridden.
 exports.defineTasks(['jshint', 'test', 'bundle', 'rebundle']);
+
+jsextensions = require('./internal/jsextensions');
+jsextensions.processExtensionPoints(exports);
