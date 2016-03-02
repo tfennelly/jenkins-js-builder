@@ -32,6 +32,12 @@ if (maven.isMavenProject) {
 exports.gulp = gulp;
 exports.browserify = browserify;
 
+// Expose the internal modules.
+exports.logger = logger;
+exports.paths = paths;
+exports.dependencies = dependencies;
+exports.maven = maven;
+
 exports.defineTasks = function(tasknames) {
     if (!tasknames) {
         tasknames = ['test'];

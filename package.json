@@ -1,6 +1,6 @@
 {
   "name": "@jenkins-cd/js-builder",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Jenkins CI JavaScript Build utilities.",
   "main": "index.js",
   "scripts": {
@@ -26,7 +26,7 @@
     "handlebars": "^3.0.3",
     "hbsfy": "^2.4.1",
     "jasmine-reporters": "^2.0.6",
-    "@jenkins-cd/js-modules": "^0.0.1",
+    "@jenkins-cd/js-modules": "^0.x",
     "js-yaml": "^3.5.3",
     "jshint": "^2.x",
     "minifyify": "^7.1.0",
