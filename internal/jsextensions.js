@@ -88,7 +88,7 @@ function transformToJSX(builder) {
         
         // Add the js-modules import of the extensions and add the code to register all
         // of the extensions in the shared store.
-        jsxFileContent += "require('jenkins-js-modules').import('jenkins-cd:js-extensions').onFulfilled(function(extensions) {\n";
+        jsxFileContent += "require('@jenkins-cd/js-modules').import('jenkins-cd:js-extensions').onFulfilled(function(extensions) {\n";
         for (var i2 = 0; i2 < extensions.length; i2++) {
             var extension = extensions[i2];
             

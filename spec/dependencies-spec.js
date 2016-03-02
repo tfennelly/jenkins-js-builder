@@ -4,7 +4,7 @@ describe("dependencies test", function () {
         var dependecies = require('../internal/dependecies');
         var dep;
         
-        dep = dependecies.getDependency('jenkins-js-modules');
+        dep = dependecies.getDependency('@jenkins-cd/js-modules');
         expect(dep.type).toBe('runtime');
         
         dep = dependecies.getDependency('zombie');

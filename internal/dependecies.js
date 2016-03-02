@@ -40,7 +40,7 @@ exports.getDependency = function(depName) {
 };
 
 exports.hasJenkinsJsModulesDep = function() {
-    return (exports.getDependency('jenkins-js-modules') !== undefined);
+    return (exports.getDependency('@jenkins-cd/js-modules') !== undefined);
 };
 
 exports.hasJenkinsJsExtensionsDep = function() {
@@ -68,7 +68,7 @@ exports.warnOnMissingDependency = function(depName, message) {
 
 exports.assertHasJenkinsJsModulesDependency = function(message) {
     if(!exports.hasJenkinsJsModulesDep()) {
-        exports.exitOnMissingDependency('jenkins-js-modules', message);
+        exports.exitOnMissingDependency('@jenkins-cd/js-modules', message);
     }
 };
 

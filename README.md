@@ -22,9 +22,9 @@ __Table of Contents__:
 <hr/>
 
 # Overview
-[NPM] utility for building [CommonJS] module [bundle]s (and optionally making them __[jenkins-js-modules]__ compatible).
+[NPM] utility for building [CommonJS] module [bundle]s (and optionally making them __[js-modules]__ compatible).
 
-> See __[jenkins-js-modules]__.
+> See __[js-modules]__.
 
 The following diagram illustrates the basic flow (and components used) in the process of building a [CommonJS] module [bundle]. 
 It uses a number of popular JavaScript and maven tools ([CommonJS]/[node.js], [Browserify], [Gulp], [frontend-maven-plugin] and more).
@@ -43,31 +43,31 @@ The responsibilities of the components in the above diagram can be summarized as
 * __[frontend-maven-plugin]__: A Maven plugin that allows us to hook a [Gulp] "build" into a maven build e.g. for a Jenkins plugin. See <a href="#maven-integration">Maven Integration</a> below.
 
 # Features
-`jenkins-js-builder` does a number of things:
+`js-builder` does a number of things:
 
 1. Runs [Jasmine] tests/specs and produce a JUnit report that can be picked up by a top level Maven build.
 1. Uses [Browserify] to produce a [CommonJS] module __[bundle]__ file from a "main" [CommonJS] module (see the `bundle` task below). The [bundle] file is typically placed somewhere on the filesystem that allows a higher level Maven build to pick it up and include it in e.g. a Jenkins plugin HPI file (so it can be loaded by the browser at runtime). 
 1. Pre-process [Handlebars] files (`.hbs`) and include them in the __[bundle]__ file (see 2 above).
 1. __Optionally__ pre-process a [LESS] fileset to a `.css` file that can be picked up by the top level Maven build and included in the e.g. a Jenkins plugin HPI file. See the `bundle` task below.
-1. __Optionally__ perform module transformations (using a [Browserify Transform](https://github.com/substack/browserify-handbook#transforms)) that "link" in [Framework lib]s (`import` - see [jenkins-js-modules]), making the [bundle] a lot lighter by allowing it to use a shared instance of the [Framework lib] Vs it being included in the [bundle]. This can easily reduce the size of a [bundle] from e.g. 1Mb to 50Kb or less, as [Framework lib]s are often the most weighty components. See the `bundle` task below.
-1. __Optionally__ `export` (see [jenkins-js-modules]) the [bundle]s "main" [CommonJS] module (see 2 above) so as to allow other [bundle]s `import` it i.e. effectively making the bundle a [Framework lib] (see 5 above). See the `bundle` task below.
+1. __Optionally__ perform module transformations (using a [Browserify Transform](https://github.com/substack/browserify-handbook#transforms)) that "link" in [Framework lib]s (`import` - see [js-modules]), making the [bundle] a lot lighter by allowing it to use a shared instance of the [Framework lib] Vs it being included in the [bundle]. This can easily reduce the size of a [bundle] from e.g. 1Mb to 50Kb or less, as [Framework lib]s are often the most weighty components. See the `bundle` task below.
+1. __Optionally__ `export` (see [js-modules]) the [bundle]s "main" [CommonJS] module (see 2 above) so as to allow other [bundle]s `import` it i.e. effectively making the bundle a [Framework lib] (see 5 above). See the `bundle` task below.
 
 # Install
 
 ```
-npm install --save-dev jenkins-js-builder
+npm install --save-dev @jenkins-cd/js-builder
 ```
 
 > This assumes you have [node.js] v4.0.0 (minimum) installed on your local development environment.
 
-> Note this is only required if you intend developing [jenkins-js-modules] compatible module bundles. Plugins using this should automatically handle all build aspects via maven (see later) i.e. __simple building of a plugin should require no machine level setup__.
+> Note this is only required if you intend developing [js-modules] compatible module bundles. Plugins using this should automatically handle all build aspects via maven (see later) i.e. __simple building of a plugin should require no machine level setup__.
 
 # General Usage
 
-Add a `gulpfile.js` (see [Gulp]) in the same folder as the `package.json`. Then use `jenkins-js-builder` as follows:
+Add a `gulpfile.js` (see [Gulp]) in the same folder as the `package.json`. Then use `js-builder` as follows:
 
 ```javascript
-var builder = require('jenkins-js-builder');
+var builder = require('@jenkins-cd/js-builder');
 
 builder.defineTasks(['test', 'bundle', 'rebundle']);
 
@@ -82,8 +82,8 @@ __Notes__:
 
 ## `defineTasks`
 
-`jenkins-js-builder` makes it possible to easily define a number of tasks. No tasks are turned on by default,
-so you can also just define your own tasks. To use the tasks defined in `jenkins-js-builder`, simply call
+`js-builder` makes it possible to easily define a number of tasks. No tasks are turned on by default,
+so you can also just define your own tasks. To use the tasks defined in `js-builder`, simply call
 the `defineTasks` function:
 
 ```javascript
@@ -121,14 +121,14 @@ gulp rebundle
 ```
 
 # Bundling
-As stated in the "Features" section above, much of the usefulness of `jenkins-js-builder` lies in how it
+As stated in the "Features" section above, much of the usefulness of `js-builder` lies in how it
 helps with the bundling of the different JavaScript and CSS components:
 
 1. Bundling [CommonJS] modules to produce a JavaScript [bundle]. 
 1. Bundling [LESS] resource to produce a `.css` file. 
 1. Bundling [Handlebars] templates (`hbs`) into the JavaScript [bundle].
  
-It also helps with __[jenkins-js-modules]__ compatibility i.e. handling `import`s and `export`s so as to allow
+It also helps with __[js-modules]__ compatibility i.e. handling `import`s and `export`s so as to allow
 slimming down of your "app" [bundle].
 
 ## Step 1: Create Bundle Spec
@@ -143,10 +143,10 @@ var bundleSpec = builder.bundle('<path-to-main-module>', '<bundle-name>');
 * `bundle-name` __(Optional)__: The name of the bundle to be generated. If not specified, the "main" module name will be used.  
 
 ## Step 2: Specify Bundle Output Location
-`jenkins-js-builder` lets you configure where the generated [bundle] is output to. There are 3 possible
+`js-builder` lets you configure where the generated [bundle] is output to. There are 3 possible
 options for this.
 
-> __Option 1__: Bundle as a [jenkins-js-modules] "resource", which means it will be placed in the
+> __Option 1__: Bundle as a [js-modules] "resource", which means it will be placed in the
 > `./src/main/webapp/jsmodules` folder, from where it can be `import`ed at runtime. This option
 > should be used in conjunction with `bundleSpec.export()` (see below).
 
@@ -235,7 +235,7 @@ is important in terms of producing a JavaScript [bundle] that can be used in pro
 things a bit trickier when it comes to Integration Testing your bundle because your test (and test environment) will now need to
 accommodate the fact that your bundle no longer contains all the [Framework lib]s it depends on.
 
-For that reason, `jenkins-js-builder` supports the `generateNoImportsBundle` option, which tells the builder to also generate
+For that reason, `js-builder` supports the `generateNoImportsBundle` option, which tells the builder to also generate
 a [bundle] that includes all of it's dependency [Framework lib]s i.e. a [bundle] which does not apply imports (hence "no_imports").
 
 ```javascript
@@ -279,7 +279,7 @@ See __Step 4__ above.
 
 > _since_: 0.0.35
 
-This can be done by calling `minify` on `jenkins-js-builder`:
+This can be done by calling `minify` on `js-builder`:
 
 ```javascript
 bundleSpec.minify();
@@ -309,7 +309,7 @@ Otherwise, they are:
 Changing these defaults is done through the `builder` instance e.g.:
 
 ```javascript
-var builder = require('jenkins-js-builder');
+var builder = require('@jenkins-cd/js-builder');
 
 builder.src('src/main/js');
 builder.tests('src/test/js');
@@ -323,7 +323,7 @@ builder.src(['src/main/js', 'src/main/less']);
 
 # Command line options
 
-A number of `jenkins-js-builder` options can be specified on the command line.
+A number of `js-builder` options can be specified on the command line.
 
 ## `--minify`
 
@@ -368,8 +368,8 @@ You can also execute:
 * `mvn clean -DcleanNode`: Cleans out the local node and NPM artifacts and resource (including the `node_modules` folder).
 
 [bundle]: https://github.com/jenkinsci/js-modules/blob/master/FAQs.md#what-is-the-difference-between-a-module-and-a-bundle
-[jenkins-js-modules]: https://github.com/jenkinsci/js-modules
-[jenkins-js-builder]: https://github.com/jenkinsci/js-builder
+[js-modules]: https://github.com/jenkinsci/js-modules
+[js-builder]: https://github.com/jenkinsci/js-builder
 [jenkins-js-test]: https://github.com/jenkinsci/js-test
 [NPM]: https://www.npmjs.com/
 [CommonJS]: http://www.commonjs.org/

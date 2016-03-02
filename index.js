@@ -362,7 +362,7 @@ exports.bundle = function(moduleToBundle, as) {
             var hbsfy = require("hbsfy");
             if (applyImports && bundle.findModuleMapping('handlebars')) {
                 // If there's a module mapping for handlebars, then configure handlebarsify to use
-                // jenkins-handlebars-rt/runtimes/handlebars3_rt. This is a jenkins-js-modules compatible
+                // jenkins-handlebars-rt/runtimes/handlebars3_rt. This is a js-modules compatible
                 // module "import" version of handlebars, which helps with 2 things:
                 // 1. It stops browserify from bundling the full handlebars package, importing it at runtime
                 //    instead and therefore making the final bundle lighter.
@@ -463,7 +463,7 @@ var tasks = {
         var jshintConfig;
         
         if (!hasJsHintConfig) {
-            logger.logInfo('\t- Using default JSHint configuration (in jenkins-js-builder). Override by defining a .jshintrc in this folder.');
+            logger.logInfo('\t- Using default JSHint configuration (in js-builder). Override by defining a .jshintrc in this folder.');
             jshintConfig = require('./res/default.jshintrc');
         }        
         function runJsHint(pathSet) {
@@ -494,7 +494,7 @@ function addModuleMappingTransforms(bundle, bundler) {
                         if (mapping.config.require) {
                             return cb(null, "require('" + mapping.config.require + "')");
                         } else {
-                            return cb(null, "require('jenkins-js-modules').require('" + mapping.to + "')");
+                            return cb(null, "require('@jenkins-cd/js-modules').require('" + mapping.to + "')");
                         }
                     }
                 }
@@ -533,13 +533,13 @@ function addModuleMappingTransforms(bundle, bundler) {
                         // If the export function was not called, we export nothing (see above). In this case, it just 
                         // generates an event for any modules that need to sync on the load event for the module.
                         content += "\n" +
-                            "\t\trequire('jenkins-js-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
+                            "\t\trequire('@jenkins-cd/js-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
                     }
     
                     if (imports.length > 0) {
                         var wrappedContent =
-                            "require('jenkins-js-modules').whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" + 
-                            "require('jenkins-js-modules')\n" +
+                            "require('@jenkins-cd/js-modules').whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" + 
+                            "require('@jenkins-cd/js-modules')\n" +
                                 "    .import(" + imports + ")\n" +
                                 "    .onFulfilled(function() {\n" +
                                 "\n" +
@@ -550,22 +550,22 @@ function addModuleMappingTransforms(bundle, bundler) {
                         // perform addModuleCSSToPage actions for mappings that requested it.
                         // We don't need the imports to complete before adding these. We can just add
                         // them immediately.
-                        var jsmodules = require('jenkins-js-modules/js/internal');                        
+                        var jsmodules = require('@jenkins-cd/js-modules/js/internal');                        
                         for (var i = 0; i < moduleMappings.length; i++) {
                             var mapping = moduleMappings[i];
                             var addDefaultCSS = mapping.config.addDefaultCSS;
                             if (addDefaultCSS && addDefaultCSS === true) {
                                 var parsedModuleQName = jsmodules.parseResourceQName(mapping.to);
                                 wrappedContent += 
-                                    "require('jenkins-js-modules').addModuleCSSToPage('" + parsedModuleQName.namespace + "', '" + parsedModuleQName.moduleName + "');\n";                                
+                                    "require('@jenkins-cd/js-modules').addModuleCSSToPage('" + parsedModuleQName.namespace + "', '" + parsedModuleQName.moduleName + "');\n";                                
                             }
                         }
                         
                         return done(null, wrappedContent);
                     } else {
                         if(hasJenkinsJsModulesDependency) {
-                            // Call whoami for "this" bundle. Helps 'jenkins-js-modules' figure out the bundle nsProvider etc.
-                            content = "require('jenkins-js-modules').whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" + content;
+                            // Call whoami for "this" bundle. Helps '@jenkins-cd/js-modules' figure out the bundle nsProvider etc.
+                            content = "require('@jenkins-cd/js-modules').whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" + content;
                         }
                         return done(null, content);
                     }
