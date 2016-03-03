@@ -1,5 +1,12 @@
 var builder = require('./index.js');
 
+// Create a mock bundle for abcxyz:abcxyzV2. We then use
+// this for testing the global withExternalModuleMapping
+builder.bundle('spec/abcxyzV2.js', 'abcxyzV2')
+    .inDir('jenkins/plugin/abcxyz/jsmodules');
+
+builder.withExternalModuleMapping('abcxyz', 'abcxyz:abcxyzV2');
+
 // Create some test bundles and check them in the specs
 
 //  - No imports 

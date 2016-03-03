@@ -12,6 +12,7 @@ var paths = require('./internal/paths');
 var dependencies = require('./internal/dependecies');
 var maven = require('./internal/maven');
 var testWebServer;
+var globalModuleMappingArgs = [];
 
 var cwd = process.cwd();
 var hasJenkinsJsModulesDependency = dependencies.hasJenkinsJsModulesDep();
@@ -129,6 +130,11 @@ exports.onTaskEnd = function(taskName, callback) {
     });
 };
 
+exports.withExternalModuleMapping = function(from, to, config) {
+    globalModuleMappingArgs.push(arguments);
+    return exports;
+};
+
 function normalizePath(path) {
     path = _string.ltrim(path, './');
     path = _string.ltrim(path, '/');
@@ -220,6 +226,10 @@ exports.bundle = function(moduleToBundle, as) {
             config = {
                 require: config
             };
+        } else {
+            // Clone the config object because we're going to be
+            // making changes to it.
+            config = JSON.parse(JSON.stringify(config));
         } 
         
         if (!from || !to) {
@@ -240,7 +250,13 @@ exports.bundle = function(moduleToBundle, as) {
         });
         
         return bundle;
-    };            
+    };
+    
+    // Add all global mappings.
+    for (var i = 0; i < globalModuleMappingArgs.length; i++) {
+        bundle.withExternalModuleMapping.apply(bundle, globalModuleMappingArgs[i]);
+    }
+    
     bundle.less = function(src, targetDir) {
         bundle.lessSrcPath = src;
         if (targetDir) {
