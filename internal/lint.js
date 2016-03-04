@@ -3,6 +3,7 @@ var fs = require('fs');
 var cwd = process.cwd();
 var paths = require('./paths');
 var logger = require('./logger');
+var args = require('./args');
 var hasJsHintConfig = fs.existsSync(cwd + '/.jshintrc');
 var hasEsLintConfig = fs.existsSync(cwd + '/.eslintrc');
 
@@ -75,12 +76,16 @@ function runEslint(lintConfig) {
                 .pipe(eslint.format())
                 .pipe(eslint.result(function (result) {}))
                 .pipe(eslint.results(function (results) {
-                    console.log('Total Results: ' + results.length);
-                    console.log('Total Warnings: ' + results.warningCount);
-                    console.log('Total Errors: ' + results.errorCount);
-                    if (results.errorCount > 0) {
-                        logger.logError('There are eslint errors.');
-                        process.exit(1);
+                    if (results.errorCount > 0 || results.warningCount > 0) {
+                        console.log('Total Results: ' + results.length);
+                        console.log('Total Warnings: ' + results.warningCount);
+                        console.log('Total Errors: ' + results.errorCount);
+                        if (results.errorCount > 0) {
+                            logger.logError('There are eslint errors. (--continueOnLint to continue on lint errors)');
+                            if (!args.isArgvSpecified('--continueOnLint')) {
+                                process.exit(1);
+                            }
+                        }
                     }
                 })                    
                 );
