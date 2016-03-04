@@ -226,6 +226,8 @@ bundleSpec.withExternalModuleMapping('moment', 'momentjs:momentjs2');
 Of course your "app" bundle may depend on a number of weighty [Framework lib]s that you would prefer not to
 include in your bundle. If so, simply call `withExternalModuleMapping` for each.
 
+> Note that you can apply global mappings by calling `withExternalModuleMapping` on the top level `builder` instance. This is useful if you are creating multiple bundles, many/all of which are using the same external module mappings.
+
 ### Step 4.1 (Optional): Generating a "no_imports" bundle
 
 Externalizing commons [Framework lib]s (<a href="#step-4-optional-specify-external-module-mappings-imports">see Step 4</a>)
@@ -285,6 +287,26 @@ Or, by passing `--minify` on the command line. This will result in the minificat
  
 ```sh
 $ gulp --minify
+```
+
+## onPreBundle listeners
+
+There are times when you will need access to the underlying [Browserify] `bundler` just before the
+bundling process is executed (e.g. for adding transforms etc).
+
+To do this, you call the `onPreBundle` function. This function takes a `listener` function as an argument.
+This `listener` function, when called, receives the `bundle` as `this` and the `bundler` as the only argument to
+the supplied `listener`.
+
+```javascript
+var builder = require('@jenkins-cd/js-builder');
+
+builder.onPreBundle(function(bundler) {
+    var bundle = this;
+    
+    console.log('Adding the funky transform to bundler for bundle: ' + bundle.as);
+    bundler.transform(myFunkyTransform);
+});
 ```
 
 # Setting 'src' and 'test' (spec) paths
