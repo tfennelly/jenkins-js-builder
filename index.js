@@ -380,8 +380,8 @@ exports.bundle = function(moduleToBundle, as) {
             }            
             var bundler = browserify(browserifyConfig);
 
-            var hasJSX = hasSourceFiles('jsx');
-            var hasES6 = hasSourceFiles('es6');
+            var hasJSX = paths.hasSourceFiles('jsx');
+            var hasES6 = paths.hasSourceFiles('es6');
             if (hasJSX || hasES6) {
                 var babelify = require('babelify');
                 var presets = [];
@@ -667,28 +667,6 @@ function argvIndex(argv) {
         }
     }
     return -1;
-}
-
-function hasSourceFiles(ext) {
-    var glob = require('glob');
-    var hasFiles = false;
-    var options = {
-        nodir: true
-    };
-
-    function _hasFiles(path) {
-        var files = glob.sync(path + "**/*." + ext, options);
-        hasFiles = (files && files.length > 0);
-    }
-
-    for (var i = 0; hasFiles === false && i < paths.srcPaths.length; i++) {
-        _hasFiles(paths.srcPaths[i]);
-    }
-    if (hasFiles === false) {
-        _hasFiles(paths.testSrcPath);
-    }
-    
-    return hasFiles;
 }
 
 // Defined default tasks. Can be overridden.

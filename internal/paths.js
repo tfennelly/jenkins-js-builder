@@ -64,3 +64,25 @@ exports.mkdirp = function(thePath) {
         fs.mkdirSync(thePath);
     }
 };
+
+exports.hasSourceFiles = function(ext) {
+    var glob = require('glob');
+    var hasFiles = false;
+    var options = {
+        nodir: true
+    };
+
+    function _hasFiles(path) {
+        var files = glob.sync(path + "**/*." + ext, options);
+        hasFiles = (files && files.length > 0);
+    }
+
+    for (var i = 0; hasFiles === false && i < exports.srcPaths.length; i++) {
+        _hasFiles(exports.srcPaths[i]);
+    }
+    if (hasFiles === false) {
+        _hasFiles(exports.testSrcPath);
+    }
+    
+    return hasFiles;
+};
