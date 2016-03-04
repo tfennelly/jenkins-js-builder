@@ -5,11 +5,11 @@ var fs = require('fs');
 describe("paths test", function () {
 
     it("- test getAbsoluteJSRoot", function () {
-        expect(paths.getAbsoluteJSRoot()).toBe(cwd + '/js');
+        expect(paths.getAbsoluteJSRoot()).toBe(cwd + '/internal');
     });
 
     it("- test toAbsoluteJSPath", function () {
-        expect(paths.toAbsoluteJSPath('menu/MyWidget')).toBe(cwd + '/js/menu/MyWidget');
+        expect(paths.toAbsoluteJSPath('menu/MyWidget')).toBe(cwd + '/internal/menu/MyWidget');
     });
 
     it("- test mkdirp", function () {

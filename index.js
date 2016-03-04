@@ -39,6 +39,55 @@ exports.paths = paths;
 exports.dependencies = dependencies;
 exports.maven = maven;
 
+var langConfig = {
+    ecmaVersion: 5
+};
+var lintConfig = {
+    level: 'configured',
+    src: true,
+    tests: false
+};
+
+/**
+ * Set the JavaScript language configuration.
+ */
+exports.lang = function(config) {
+    if (typeof config === 'number') {
+        langConfig.ecmaVersion = parseInt(config);
+    } else if (typeof config === 'string') {
+        if (config === 'es6') {
+            langConfig.ecmaVersion = 6;
+        } else if (config === 'react') {
+            langConfig.ecmaVersion = 6;
+        }
+    } else {
+        if (config.ecmaVersion) {
+            langConfig.ecmaVersion = config.ecmaVersion;
+        }
+    }
+    return exports;
+};
+
+/**
+ * Set the lint config.
+ * @param config The lint config. A string of "none", "configured", or
+ * an .
+ */
+exports.lint = function(config) {
+    if (typeof config === 'string') {
+        if (config === 'none') {
+            lintConfig.level = 'none';
+        }
+    } else {
+        if (config.src) {
+            lintConfig.src = config.src;
+        }
+        if (config.tests) {
+            lintConfig.tests = config.tests;
+        }
+    }
+};
+
 exports.defineTasks = function(tasknames) {
     if (!tasknames) {
         tasknames = ['test'];
@@ -502,7 +551,7 @@ var tasks = {
         gulp.watch(watchList, ['bundle']);
     },
     lint: function() {
-        require('./internal/lint').exec();
+        require('./internal/lint').exec(langConfig, lintConfig);
     }
 };
 

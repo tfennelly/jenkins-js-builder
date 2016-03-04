@@ -3,13 +3,32 @@ var fs = require('fs');
 var cwd = process.cwd();
 var paths = require('./paths');
 var logger = require('./logger');
-var hasJsHintConfig = fs.existsSync(cwd + '/../.jshintrc');
+var hasJsHintConfig = fs.existsSync(cwd + '/.jshintrc');
+var hasEsLintConfig = fs.existsSync(cwd + '/.eslintrc');
 
-exports.exec = function() {
-    runJsHint()
+var hasJSX = paths.hasSourceFiles('jsx');
+var hasES6 = paths.hasSourceFiles('es6');
+
+exports.exec = function(langConfig, lintConfig) {
+    if (lintConfig.level === 'none') {
+        logger.logInfo('Code linting is disabled.');
+        return;
+    }
+    
+    if (hasJsHintConfig) {
+        runJsHint(lintConfig);
+    } else if (hasEsLintConfig || hasJSX || hasES6) {
+        runEslint(lintConfig);
+    } else {
+        if (langConfig.ecmaVersion === 5) {
+            runJsHint(lintConfig);
+        } else if (langConfig.ecmaVersion === 6) {
+            runEslint(lintConfig);
+        }
+    }
 };
 
-function runJsHint() {
+function runJsHint(lintConfig) {
     var jshint = require('gulp-jshint');
     var jshintConfig;
     
@@ -20,12 +39,57 @@ function runJsHint() {
     function _runJsHint(pathSet) {
         for (var i = 0; i < pathSet.length; i++) {
             // TODO: eslint for .jsx and .es6 files.
-            gulp.src([pathSet[i] + '/**/*.js'])
+            gulp.src(['./index.js', pathSet[i] + '/**/*.js'])
                 .pipe(jshint(jshintConfig))
                 .pipe(jshint.reporter('default'))
                 .pipe(jshint.reporter('fail'));
         }
     }
-    _runJsHint(paths.srcPaths);
-    _runJsHint([paths.testSrcPath]);
+    if (lintConfig.src) {
+        _runJsHint(paths.srcPaths);
+    }
+    if (lintConfig.tests) {
+        _runJsHint([paths.testSrcPath]);
+    }
+}
+
+function runEslint(lintConfig) {
+    var eslint = require('gulp-eslint');
+    var eslintConfig;
+    
+    if (!hasEsLintConfig) {
+        logger.logInfo('\t- Using default eslint configuration (from Airbnb). Override by defining a .eslintrc in this folder.');
+        
+        // See https://www.npmjs.com/package/eslint-config-airbnb
+        if (hasJSX) {
+            eslintConfig = require('eslint-config-airbnb');
+        } else {
+            eslintConfig = require('eslint-config-airbnb/base');
+        }
+    }
+    
+    function _runEsLint(pathSet) {
+        for (var i = 0; i < pathSet.length; i++) {
+            gulp.src(['./index.js', pathSet[i] + '/**/*.js', pathSet[i] + '/**/*.jsx', pathSet[i] + '/**/*.es6'])
+                .pipe(eslint(eslintConfig))
+                .pipe(eslint.format())
+                .pipe(eslint.result(function (result) {}))
+                .pipe(eslint.results(function (results) {
+                    console.log('Total Results: ' + results.length);
+                    console.log('Total Warnings: ' + results.warningCount);
+                    console.log('Total Errors: ' + results.errorCount);
+                    if (results.errorCount > 0) {
+                        logger.logError('There are eslint errors.');
+                        process.exit(1);
+                    }
+                })                    
+                );
+        }
+    }
+    if (lintConfig.src) {
+        _runEsLint(paths.srcPaths);
+    }
+    if (lintConfig.tests) {
+        _runEsLint([paths.testSrcPath]);
+    }
 }
