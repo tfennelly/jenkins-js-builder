@@ -7,6 +7,7 @@ var source = require('vinyl-source-stream');
 var transformTools = require('browserify-transform-tools');
 var _string = require('underscore.string');
 var fs = require('fs');
+var args = require('./internal/args');
 var logger = require('./internal/logger');
 var paths = require('./internal/paths');
 var dependencies = require('./internal/dependecies');
@@ -241,7 +242,7 @@ exports.bundle = function(moduleToBundle, as) {
     bundle.bundleModule = moduleToBundle;
     bundle.bundleOutputFile = bundle.as + '.js';
     bundle.moduleMappings = [];
-    bundle.minifyBundle = isArgvSpecified('--minify');
+    bundle.minifyBundle = args.isArgvSpecified('--minify');
     bundle.inAdjunctPackage = function(packageName) {
         if (!packageName) {
             gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + moduleToBundle + "'. You can't specify a 'null' adjunct package name."));
@@ -518,7 +519,7 @@ var tasks = {
             filePrefix: 'JasmineReport'    
         });
 
-        var testSpecs = paths.testSrcPath + '/**/' + argvValue('--test', '') + '*-spec.js';
+        var testSpecs = paths.testSrcPath + '/**/' + args.argvValue('--test', '') + '*-spec.js';
         logger.logInfo('Test specs: ' + testSpecs);
         
         global.jenkinsBuilder = exports;
@@ -694,28 +695,6 @@ function _stopTestWebServer() {
         testWebServer = undefined;
         logger.logInfo('Testing web server stopped.');
     }
-}
-
-function isArgvSpecified(argv) {
-    return (argvIndex(argv) !== -1);
-}
-
-function argvValue(argv, defaultVal) {
-    var i = argvIndex(argv);
-    if (i >= 0 && i < process.argv.length - 1) {
-        // The arg after the argv/name is it's value
-        return process.argv[i + 1];
-    }
-    return defaultVal;    
-}
-
-function argvIndex(argv) {
-    for (var i = 0; i < process.argv.length; i++) {
-        if (process.argv[i] === argv) {
-            return i;
-        }
-    }
-    return -1;
 }
 
 // Defined default tasks. Can be overridden.
