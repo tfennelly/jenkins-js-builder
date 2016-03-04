@@ -502,25 +502,7 @@ var tasks = {
         gulp.watch(watchList, ['bundle']);
     },
     lint: function() {
-        var jshint = require('gulp-jshint');
-        var hasJsHintConfig = fs.existsSync(cwd + '/.jshintrc');
-        var jshintConfig;
-        
-        if (!hasJsHintConfig) {
-            logger.logInfo('\t- Using default JSHint configuration (in js-builder). Override by defining a .jshintrc in this folder.');
-            jshintConfig = require('./res/default.jshintrc');
-        }        
-        function runJsHint(pathSet) {
-            for (var i = 0; i < pathSet.length; i++) {
-                // TODO: eslint for .jsx and .es6 files.
-                gulp.src([pathSet[i] + '/**/*.js'])
-                    .pipe(jshint(jshintConfig))
-                    .pipe(jshint.reporter('default'))
-                    .pipe(jshint.reporter('fail'));
-            }
-        }
-        runJsHint(paths.srcPaths);
-        runJsHint([paths.testSrcPath]);        
+        require('./internal/lint').exec();
     }
 };
 
