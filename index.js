@@ -12,12 +12,13 @@ var paths = require('./internal/paths');
 var dependencies = require('./internal/dependecies');
 var maven = require('./internal/maven');
 var testWebServer;
+var globalModuleMappingArgs = [];
 
 var cwd = process.cwd();
 var hasJenkinsJsModulesDependency = dependencies.hasJenkinsJsModulesDep();
 
 var bundles = []; // see exports.bundle function
-var bundleDependencyTaskNames = ['log-env'];
+var bundleDependencyTaskNames = ['log-env', 'js-extensions'];
 
 var adjunctBasePath = './target/generated-adjuncts/';
 var jsmodulesBasePath = './src/main/webapp/jsmodules/';
@@ -47,6 +48,10 @@ exports.defineTasks = function(tasknames) {
         logger.logInfo("Source Dirs:");
         logger.logInfo(" - src: " + paths.srcPaths);
         logger.logInfo(" - test: " + paths.testSrcPath);    
+    });
+    gulp.task('js-extensions', function() {
+        var jsextensions = require('./internal/jsextensions');
+        jsextensions.processExtensionPoints(exports);
     });
 
     var defaults = [];
@@ -127,6 +132,25 @@ exports.onTaskEnd = function(taskName, callback) {
             callback();
         }
     });
+};
+
+exports.withExternalModuleMapping = function(from, to, config) {
+    globalModuleMappingArgs.push(arguments);
+    return exports;
+};
+
+var preBundleListeners = [];
+/**
+ * Add a listener to be called just before Browserify starts bundling.
+ * <p>
+ * The listener is called with the {@code bundle} as {@code this} and
+ * the {@code bundler} as as the only arg.
+ * 
+ * @param listener The listener to add.
+ */
+exports.onPreBundle = function(listener) {
+    preBundleListeners.push(listener);
+    return exports;
 };
 
 function normalizePath(path) {
@@ -220,6 +244,10 @@ exports.bundle = function(moduleToBundle, as) {
             config = {
                 require: config
             };
+        } else {
+            // Clone the config object because we're going to be
+            // making changes to it.
+            config = JSON.parse(JSON.stringify(config));
         } 
         
         if (!from || !to) {
@@ -240,7 +268,13 @@ exports.bundle = function(moduleToBundle, as) {
         });
         
         return bundle;
-    };            
+    };
+    
+    // Add all global mappings.
+    for (var i = 0; i < globalModuleMappingArgs.length; i++) {
+        bundle.withExternalModuleMapping.apply(bundle, globalModuleMappingArgs[i]);
+    }
+    
     bundle.less = function(src, targetDir) {
         bundle.lessSrcPath = src;
         if (targetDir) {
@@ -397,6 +431,10 @@ exports.bundle = function(moduleToBundle, as) {
                     map: sourceMap,
                     output: bundleTo + '/' + sourceMap
                 });
+            }
+            
+            for (var i = 0; i < preBundleListeners.length; i++) {
+                preBundleListeners[i].call(bundle, bundler);
             }
             
             return bundler.bundle().pipe(source(bundle.bundleOutputFile))
@@ -673,6 +711,3 @@ function hasSourceFiles(ext) {
 
 // Defined default tasks. Can be overridden.
 exports.defineTasks(['jshint', 'test', 'bundle', 'rebundle']);
-
-jsextensions = require('./internal/jsextensions');
-jsextensions.processExtensionPoints(exports);
