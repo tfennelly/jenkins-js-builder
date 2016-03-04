@@ -139,6 +139,20 @@ exports.withExternalModuleMapping = function(from, to, config) {
     return exports;
 };
 
+var preBundleListeners = [];
+/**
+ * Add a listener to be called just before Browserify starts bundling.
+ * <p>
+ * The listener is called with the {@code bundle} as {@code this} and
+ * the {@code bundler} as as the only arg.
+ * 
+ * @param listener The listener to add.
+ */
+exports.onPreBundle = function(listener) {
+    preBundleListeners.push(listener);
+    return exports;
+};
+
 function normalizePath(path) {
     path = _string.ltrim(path, './');
     path = _string.ltrim(path, '/');
@@ -417,6 +431,10 @@ exports.bundle = function(moduleToBundle, as) {
                     map: sourceMap,
                     output: bundleTo + '/' + sourceMap
                 });
+            }
+            
+            for (var i = 0; i < preBundleListeners.length; i++) {
+                preBundleListeners[i].call(bundle, bundler);
             }
             
             return bundler.bundle().pipe(source(bundle.bundleOutputFile))
