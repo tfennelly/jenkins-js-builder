@@ -228,8 +228,6 @@ include in your bundle. If so, simply call `withExternalModuleMapping` for each.
 
 ### Step 4.1 (Optional): Generating a "no_imports" bundle
 
-> _since_: 0.0.34
-
 Externalizing commons [Framework lib]s (<a href="#step-4-optional-specify-external-module-mappings-imports">see Step 4</a>)
 is important in terms of producing a JavaScript [bundle] that can be used in production (is lighter etc), but can make
 things a bit trickier when it comes to Integration Testing your bundle because your test (and test environment) will now need to
@@ -276,8 +274,6 @@ It would need to:
 See __Step 4__ above.  
 
 ## Step 6 (Optional): Minify bundle JavaScript
-
-> _since_: 0.0.35
 
 This can be done by calling `minify` on `js-builder`:
 
@@ -327,8 +323,6 @@ A number of `js-builder` options can be specified on the command line.
 
 ## `--minify`
 
-> _since_: 0.0.35
-
 Passing `--minify` on the command line will result in the minification of all generated bundles.
  
 ```sh
@@ -337,7 +331,6 @@ $ gulp --minify
 
 ## `--test`
 
-> _since_: 0.0.35
 
 Run a single test.
  
