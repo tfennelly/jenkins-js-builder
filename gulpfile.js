@@ -1,5 +1,8 @@
 var builder = require('./index.js');
 
+// TODO: come back and clean this up. Enable jshint etc.
+builder.lint('none');
+
 builder.src('./internal');
 
 // Create a mock bundle for abcxyz:abcxyzV2. We then use
