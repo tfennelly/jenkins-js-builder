@@ -18,7 +18,7 @@ var cwd = process.cwd();
 var hasJenkinsJsModulesDependency = dependencies.hasJenkinsJsModulesDep();
 
 var bundles = []; // see exports.bundle function
-var bundleDependencyTaskNames = ['log-env'];
+var bundleDependencyTaskNames = ['log-env', 'js-extensions'];
 
 var adjunctBasePath = './target/generated-adjuncts/';
 var jsmodulesBasePath = './src/main/webapp/jsmodules/';
@@ -48,6 +48,10 @@ exports.defineTasks = function(tasknames) {
         logger.logInfo("Source Dirs:");
         logger.logInfo(" - src: " + paths.srcPaths);
         logger.logInfo(" - test: " + paths.testSrcPath);    
+    });
+    gulp.task('js-extensions', function() {
+        var jsextensions = require('./internal/jsextensions');
+        jsextensions.processExtensionPoints(exports);
     });
 
     var defaults = [];
@@ -689,6 +693,3 @@ function hasSourceFiles(ext) {
 
 // Defined default tasks. Can be overridden.
 exports.defineTasks(['jshint', 'test', 'bundle', 'rebundle']);
-
-jsextensions = require('./internal/jsextensions');
-jsextensions.processExtensionPoints(exports);
