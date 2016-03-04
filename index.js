@@ -65,7 +65,7 @@ exports.defineTasks = function(tasknames) {
         }
         
         exports.defineTask(taskname, gulpTask);
-        if (taskname === 'jshint' || taskname === 'test' || taskname === 'bundle') {
+        if (taskname === 'lint' || taskname === 'test' || taskname === 'bundle') {
             defaults.push(taskname);
         }
     }
@@ -501,7 +501,7 @@ var tasks = {
         
         gulp.watch(watchList, ['bundle']);
     },
-    jshint: function() {
+    lint: function() {
         var jshint = require('gulp-jshint');
         var hasJsHintConfig = fs.existsSync(cwd + '/.jshintrc');
         var jshintConfig;
@@ -710,4 +710,4 @@ function hasSourceFiles(ext) {
 }
 
 // Defined default tasks. Can be overridden.
-exports.defineTasks(['jshint', 'test', 'bundle', 'rebundle']);
+exports.defineTasks(['lint', 'test', 'bundle', 'rebundle']);
