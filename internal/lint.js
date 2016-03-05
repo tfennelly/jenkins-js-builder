@@ -77,15 +77,19 @@ function runEslint(lintConfig) {
                 .pipe(eslint.result(function (result) {}))
                 .pipe(eslint.results(function (results) {
                     if (results.errorCount > 0 || results.warningCount > 0) {
-                        console.log('Total Results: ' + results.length);
-                        console.log('Total Warnings: ' + results.warningCount);
-                        console.log('Total Errors: ' + results.errorCount);
+                        logger.logWarn('Oops, there are some eslint errors/warnings:');
+                        if (results.warningCount > 0) {
+                            logger.logWarn('\tWarnings: ' + results.warningCount);
+                        }
                         if (results.errorCount > 0) {
-                            logger.logError('There are eslint errors. (--continueOnLint to continue on lint errors)');
+                            logger.logError('\tErrors:   ' + results.errorCount);
                             if (!args.isArgvSpecified('--continueOnLint')) {
+                                logger.logError('There are eslint errors. Failing the build now. (--continueOnLint to continue on lint errors)');
                                 process.exit(1);
                             }
                         }
+                    } else {
+                        logger.logInfo('There are no eslint errors/warnings. Nice work!!!');
                     }
                 })                    
                 );
