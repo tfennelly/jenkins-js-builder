@@ -41,7 +41,7 @@ exports.dependencies = dependencies;
 exports.maven = maven;
 
 var langConfig = {
-    ecmaVersion: 5
+    ecmaVersion: 6
 };
 var lintConfig = {
     level: 'configured',
@@ -56,7 +56,9 @@ exports.lang = function(config) {
     if (typeof config === 'number') {
         langConfig.ecmaVersion = parseInt(config);
     } else if (typeof config === 'string') {
-        if (config === 'es6') {
+        if (config === 'es5') {
+            langConfig.ecmaVersion = 5;
+        } else if (config === 'es6') {
             langConfig.ecmaVersion = 6;
         } else if (config === 'react') {
             langConfig.ecmaVersion = 6;
@@ -432,7 +434,7 @@ exports.bundle = function(moduleToBundle, as) {
 
             var hasJSX = paths.hasSourceFiles('jsx');
             var hasES6 = paths.hasSourceFiles('es6');
-            if (hasJSX || hasES6) {
+            if (langConfig.ecmaVersion === 6 || hasJSX || hasES6) {
                 var babelify = require('babelify');
                 var presets = [];
                 
@@ -441,7 +443,7 @@ exports.bundle = function(moduleToBundle, as) {
                     dependencies.warnOnMissingDependency('babel-preset-react', 'You have JSX sources in this project. Transpiling these will require the "babel-preset-react" package.');
                     presets.push('es2015');
                     dependencies.warnOnMissingDependency('babel-preset-es2015', 'You have JSX/ES6 sources in this project. Transpiling these will require the "babel-preset-es2015" package.');
-                } else if (hasES6) {
+                } else {
                     presets.push('es2015');
                     dependencies.warnOnMissingDependency('babel-preset-es2015', 'You have ES6 sources in this project. Transpiling these will require the "babel-preset-es2015" package.');
                 }

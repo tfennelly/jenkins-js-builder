@@ -17,15 +17,11 @@ exports.exec = function(langConfig, lintConfig) {
     }
     
     if (hasJsHintConfig) {
+        // We only use jshint if it's explicitly configured
+        // with a .jshintrc file.
         runJsHint(lintConfig);
-    } else if (hasEsLintConfig || hasJSX || hasES6) {
-        runEslint(lintConfig);
     } else {
-        if (langConfig.ecmaVersion === 5) {
-            runJsHint(lintConfig);
-        } else if (langConfig.ecmaVersion === 6) {
-            runEslint(lintConfig);
-        }
+        runEslint(langConfig, lintConfig);
     }
 };
 
@@ -54,18 +50,20 @@ function runJsHint(lintConfig) {
     }
 }
 
-function runEslint(lintConfig) {
+function runEslint(langConfig, lintConfig) {
     var eslint = require('gulp-eslint');
     var eslintConfig;
     
     if (!hasEsLintConfig) {
-        logger.logInfo('\t- Using default eslint configuration (from Airbnb). Override by defining a .eslintrc in this folder.');
-        
-        // See https://www.npmjs.com/package/eslint-config-airbnb
         if (hasJSX) {
-            eslintConfig = require('eslint-config-airbnb');
+            logger.logInfo('\t- Using the "react" eslint configuration from eslint-config-jenkins. Override by defining a .eslintrc in this folder (if you really must).');
+            eslintConfig = require('@jenkins-cd/eslint-config-jenkins/react');
+        } else if (langConfig.ecmaVersion === 6 || hasES6) {
+            logger.logInfo('\t- Using the "es6" eslint configuration from eslint-config-jenkins. Override by defining a .eslintrc in this folder (if you really must).');
+            eslintConfig = require('@jenkins-cd/eslint-config-jenkins/es6');
         } else {
-            eslintConfig = require('eslint-config-airbnb/base');
+            logger.logInfo('\t- Using the "es5" eslint configuration from eslint-config-jenkins. Override by defining a .eslintrc in this folder (if you really must).');
+            eslintConfig = require('@jenkins-cd/eslint-config-jenkins/es5');
         }
     }
     
@@ -74,7 +72,6 @@ function runEslint(lintConfig) {
             gulp.src(['./index.js', pathSet[i] + '/**/*.js', pathSet[i] + '/**/*.jsx', pathSet[i] + '/**/*.es6'])
                 .pipe(eslint(eslintConfig))
                 .pipe(eslint.format())
-                .pipe(eslint.result(function (result) {}))
                 .pipe(eslint.results(function (results) {
                     if (results.errorCount > 0 || results.warningCount > 0) {
                         logger.logWarn('Oops, there are some eslint errors/warnings:');
@@ -88,8 +85,6 @@ function runEslint(lintConfig) {
                                 process.exit(1);
                             }
                         }
-                    } else {
-                        logger.logInfo('There are no eslint errors/warnings. Nice work!!!');
                     }
                 })                    
                 );
