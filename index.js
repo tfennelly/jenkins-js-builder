@@ -19,7 +19,7 @@ var cwd = process.cwd();
 var hasJenkinsJsModulesDependency = dependencies.hasJenkinsJsModulesDep();
 
 var bundles = []; // see exports.bundle function
-var bundleDependencyTaskNames = ['log-env', 'js-extensions'];
+var bundleDependencyTaskNames = ['log-env'];
 
 var adjunctBasePath = './target/generated-adjuncts/';
 var jsmodulesBasePath = './src/main/webapp/jsmodules/';
@@ -100,10 +100,6 @@ exports.defineTasks = function(tasknames) {
         logger.logInfo("Source Dirs:");
         logger.logInfo(" - src: " + paths.srcPaths);
         logger.logInfo(" - test: " + paths.testSrcPath);    
-    });
-    gulp.task('js-extensions', function() {
-        var jsextensions = require('./internal/jsextensions');
-        jsextensions.processExtensionPoints(exports);
     });
 
     var defaults = [];
@@ -307,6 +303,11 @@ exports.bundle = function(moduleToBundle, as) {
             logger.logError(message);
             throw message;
         }
+
+        if (to === bundle.getModuleQName()) {
+            // Do not add mappings to itself.
+            return bundle;
+        }
         
         // special case because we are externalizing handlebars runtime for handlebarsify.
         if (from === 'handlebars' && to === 'handlebars:handlebars3' && !config.require) {
@@ -321,11 +322,6 @@ exports.bundle = function(moduleToBundle, as) {
         
         return bundle;
     };
-    
-    // Add all global mappings.
-    for (var i = 0; i < globalModuleMappingArgs.length; i++) {
-        bundle.withExternalModuleMapping.apply(bundle, globalModuleMappingArgs[i]);
-    }
     
     bundle.less = function(src, targetDir) {
         bundle.lessSrcPath = src;
@@ -351,6 +347,14 @@ exports.bundle = function(moduleToBundle, as) {
             return;
         }
         logger.logInfo("\t- Bundle will be exported as '" + bundle.bundleExportNamespace + ":" + bundle.as + "'.");
+    };
+    
+    bundle.getModuleQName = function() {
+        if (bundle.bundleExportNamespace) {
+            return bundle.bundleExportNamespace + ':' + bundle.as;
+        } else {
+            return 'undefined:' + bundle.as;
+        }
     };
     
     bundle.findModuleMapping = function(from) {
@@ -381,6 +385,11 @@ exports.bundle = function(moduleToBundle, as) {
                 throw "'bundle' task failed. See error above.";
             }
 
+            // Add all global mappings.
+            for (var i = 0; i < globalModuleMappingArgs.length; i++) {
+                bundle.withExternalModuleMapping.apply(bundle, globalModuleMappingArgs[i]);
+            }
+            
             var bundleTo;
             if (bundle.bundleAsJenkinsModule) {
                 bundleTo = jsmodulesBasePath;
@@ -701,3 +710,6 @@ function _stopTestWebServer() {
 
 // Defined default tasks. Can be overridden.
 exports.defineTasks(['lint', 'test', 'bundle', 'rebundle']);
+
+var jsextensions = require('./internal/jsextensions');
+jsextensions.processExtensionPoints(exports);

@@ -8,7 +8,8 @@ builder.src('./internal');
 // Create a mock bundle for abcxyz:abcxyzV2. We then use
 // this for testing the global withExternalModuleMapping
 builder.bundle('spec/abcxyzV2.js', 'abcxyzV2')
-    .inDir('jenkins/plugin/abcxyz/jsmodules');
+    .inDir('jenkins/plugin/abcxyz/jsmodules')
+    .export('abcxyz');
 
 builder.withExternalModuleMapping('abcxyz', 'abcxyz:abcxyzV2');
 

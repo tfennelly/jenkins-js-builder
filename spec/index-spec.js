@@ -49,8 +49,8 @@ describe("index.js", function () {
             expect(browser.success).toBe(true);
             expect(jsLoads.length).toBe(3);
             expect(jsLoads[0]).toBe('http://localhost:18999/target/testmodule/testmodule_2.js');
-            expect(jsLoads[1]).toBe('http://localhost:18999/jenkins/plugin/abcxyz/jsmodules/abcxyzV2.js');
-            expect(jsLoads[2]).toBe('http://localhost:18999/jenkins/plugin/underscore/jsmodules/under_string2.js'); // loading of the dependency
+            expect(jsLoads[1]).toBe('http://localhost:18999/jenkins/plugin/underscore/jsmodules/under_string2.js'); // loading of the dependency
+            expect(jsLoads[2]).toBe('http://localhost:18999/jenkins/plugin/abcxyz/jsmodules/abcxyzV2.js');
 
             // Shouldn't be any css loaded
             browser.assert.elements('link', 0);
@@ -81,8 +81,8 @@ describe("index.js", function () {
             expect(browser.success).toBe(true);
             expect(jsLoads.length).toBe(3);
             expect(jsLoads[0]).toBe('http://localhost:18999/target/testmodule/testmodule_3.js');
-            expect(jsLoads[1]).toBe('http://localhost:18999/jenkins/plugin/abcxyz/jsmodules/abcxyzV2.js');
-            expect(jsLoads[2]).toBe('http://localhost:18999/jenkins/plugin/underscore/jsmodules/under_string2.js'); // loading of the dependency
+            expect(jsLoads[1]).toBe('http://localhost:18999/jenkins/plugin/underscore/jsmodules/under_string2.js'); // loading of the dependency
+            expect(jsLoads[2]).toBe('http://localhost:18999/jenkins/plugin/abcxyz/jsmodules/abcxyzV2.js');
 
             // Should be css on page
             browser.assert.elements('link', 1);
