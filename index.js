@@ -96,10 +96,14 @@ exports.defineTasks = function(tasknames) {
         tasknames = ['test'];
     }
     
+    var envLogged = false;
     gulp.task('log-env', function() {
-        logger.logInfo("Source Dirs:");
-        logger.logInfo(" - src: " + paths.srcPaths);
-        logger.logInfo(" - test: " + paths.testSrcPath);    
+        if (envLogged === false) {
+            logger.logInfo("Source Dirs:");
+            logger.logInfo(" - src: " + paths.srcPaths);
+            logger.logInfo(" - test: " + paths.testSrcPath);
+            envLogged = true;
+        }
     });
 
     var defaults = [];
@@ -178,7 +182,7 @@ exports.onTaskStart = function(taskName, callback) {
 };
 
 exports.onTaskEnd = function(taskName, callback) {
-    gulp.on('task_end', function(event) {
+    gulp.on('task_stop', function(event) {
         if (event.task === taskName) {
             callback();
         }
@@ -532,6 +536,16 @@ function buildSrcWatchList(includeTestSrc) {
     return watchList;
 }
 
+var rebundleRunning = false;
+var retestRunning = false;
+
+function rebundleLogging() {
+    if (rebundleRunning === true) {
+        logger.logInfo('*********************************************');
+        logger.logInfo('rebundle: watching for source changes again ...');
+    }
+}
+
 var tasks = {
     test: function () {
         if (!paths.testSrcPath) {
@@ -561,24 +575,28 @@ var tasks = {
                     gulp.emit('testing_completed');
                 }                
             }]}));
-
-        logger.logInfo('Test execution completed.');
     },
     bundle: function() {
         if (bundles.length === 0) {
             logger.logWarn("Warning: Skipping 'bundle' task. No 'module' bundles are registered. Call require('jenkins-js-build').bundle([module]) in gulpfile.js.");
         }
+        logger.logInfo('bundling: done');
+        rebundleLogging();
     },
     rebundle: function() {
         var watchList = buildSrcWatchList(false);
         logger.logInfo('rebundle watch list: ' + watchList);
+        rebundleRunning = true;
         gulp.watch(watchList, ['bundle']);
+        rebundleLogging();
     },
     retest: function() {
         var watchList = buildSrcWatchList(true);
         logger.logInfo('retest watch list: ' + watchList);
+        retestRunning = true;
         gulp.watch(watchList, ['test']);
     },
+    
     lint: function() {
         require('./internal/lint').exec(langConfig, lintConfig);
     }
@@ -709,11 +727,12 @@ function _startTestWebServer(config) {
         logger.logInfo('Testing web server started on port ' + config.port + ' (http://localhost:' + config.port + '). Content root: ' + config.root);
     }
 }
+
 gulp.on('testing_completed', function() {
-    if (testWebServer) {
-        testWebServer.close();
-        testWebServer = undefined;
-        logger.logInfo('Testing web server stopped.');
+    _stopTestWebServer();
+    if (retestRunning === true) {
+        logger.logInfo('*********************************************');
+        logger.logInfo('retest: watching for source changes again ...');
     }
 });
 
