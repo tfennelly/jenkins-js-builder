@@ -13,6 +13,15 @@ if (maven.isMavenProject) {
 }
 
 /**
+ * Get the parent directory of the supplied file/directory.
+ * @param file The file/directory.
+ * @returns The parent directory.
+ */
+exports.parentDir = function(file) {
+    return path.dirname(file);
+};
+
+/**
  * Find the jenkins-js-extension.yaml file in the src paths.
  */
 exports.findExtensionsYAMLFile = function() {

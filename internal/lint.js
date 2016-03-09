@@ -1,4 +1,5 @@
 var gulp = require('gulp');
+var gulpIf = require('gulp-if');
 var fs = require('fs');
 var cwd = process.cwd();
 var paths = require('./paths');
@@ -66,6 +67,18 @@ function runEslint(langConfig, lintConfig) {
             eslintConfig = require('@jenkins-cd/eslint-config-jenkins/es5');
         }
     }
+
+    var fixLint = args.isArgvSpecified('--fixLint');
+    if (fixLint) {
+        eslintConfig.fix = true;
+    }
+    function isFixed(file) {
+        // Has ESLint fixed the file contents?
+        return fixLint && file.eslint != null && file.eslint.fixed;
+    }
+    function fileOutputPath(file) {
+        return paths.parentDir(file.path);
+    }
     
     function _runEsLint(pathSet) {
         for (var i = 0; i < pathSet.length; i++) {
@@ -86,7 +99,8 @@ function runEslint(langConfig, lintConfig) {
                             }
                         }
                     }
-                })                    
+                })
+                .pipe(gulpIf(isFixed, gulp.dest(fileOutputPath)))    
                 );
         }
     }
