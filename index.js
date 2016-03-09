@@ -24,6 +24,9 @@ var bundleDependencyTaskNames = ['log-env'];
 var adjunctBasePath = './target/generated-adjuncts/';
 var jsmodulesBasePath = './src/main/webapp/jsmodules/';
 
+var rebundleRunning = false;
+var retestRunning = false;
+
 if (maven.isMavenProject) {
     logger.logInfo("Maven project.");
     if (maven.isHPI()) {
@@ -47,6 +50,14 @@ var lintConfig = {
     level: 'configured',
     src: true,
     tests: false
+};
+
+exports.isRebundle = function() {
+    return rebundleRunning;
+};
+
+exports.isRetest = function() {
+    return retestRunning;
 };
 
 /**
@@ -535,9 +546,6 @@ function buildSrcWatchList(includeTestSrc) {
     
     return watchList;
 }
-
-var rebundleRunning = false;
-var retestRunning = false;
 
 function rebundleLogging() {
     if (rebundleRunning === true) {
