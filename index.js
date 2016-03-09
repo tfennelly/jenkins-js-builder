@@ -134,6 +134,9 @@ exports.defineTask = function(taskname, gulpTask) {
     } else if (taskname === 'rebundle') {
         // Run bundle at the start of rebundle
         gulp.task('rebundle', ['bundle'], gulpTask);
+    } else if (taskname === 'retest') {
+        // Run test at the start of retest
+        gulp.task('retest', ['test'], gulpTask);
     } else {
         gulp.task(taskname, gulpTask);
     }
@@ -512,6 +515,23 @@ exports.bundle = function(moduleToBundle, as) {
     return bundle;
 };
 
+function buildSrcWatchList(includeTestSrc) {
+    var watchList = [];
+
+    watchList.push('./index.js');
+    for (var i = 0; i < paths.srcPaths.length; i++) {
+        var srcPath = paths.srcPaths[i];
+        watchList.push(srcPath + '/*.*');
+        watchList.push(srcPath + '/**/*.*');
+    }
+    
+    if (includeTestSrc && includeTestSrc === true) {
+        watchList.push(paths.testSrcPath + '/**/*.*');
+    }
+    
+    return watchList;
+}
+
 var tasks = {
     test: function () {
         if (!paths.testSrcPath) {
@@ -550,17 +570,14 @@ var tasks = {
         }
     },
     rebundle: function() {
-        var watchList = [];
-
-        watchList.push('./index.js');
-        for (var i = 0; i < paths.srcPaths.length; i++) {
-            var srcPath = paths.srcPaths[i];
-            watchList.push(srcPath + '/*.*');
-            watchList.push(srcPath + '/**/*.*');
-        }
+        var watchList = buildSrcWatchList(false);
         logger.logInfo('rebundle watch list: ' + watchList);
-        
         gulp.watch(watchList, ['bundle']);
+    },
+    retest: function() {
+        var watchList = buildSrcWatchList(true);
+        logger.logInfo('retest watch list: ' + watchList);
+        gulp.watch(watchList, ['test']);
     },
     lint: function() {
         require('./internal/lint').exec(langConfig, lintConfig);
@@ -709,7 +726,7 @@ function _stopTestWebServer() {
 }
 
 // Defined default tasks. Can be overridden.
-exports.defineTasks(['lint', 'test', 'bundle', 'rebundle']);
+exports.defineTasks(['lint', 'test', 'bundle', 'rebundle', 'retest']);
 
 var jsextensions = require('./internal/jsextensions');
 jsextensions.processExtensionPoints(exports);
