@@ -715,9 +715,13 @@ function less(src, targetDir) {
     gulp.src(src)
         .pipe(less().on('error', function (err) {
             logger.logError('LESS processing error:');
-            logger.logError('\tmessage: ' + err.message);
-            logger.logError('\tline #:  ' + err.line);
-            logger.logError('\textract: ' + JSON.stringify(err.extract));
+            if (err) {
+                logger.logError('\tmessage: ' + err.message);
+                logger.logError('\tline #:  ' + err.line);
+                if (err.extract) {
+                    logger.logError('\textract: ' + JSON.stringify(err.extract));
+                }
+            }
             if (exports.isRebundle()) {
                 // ignore failures if we are running rebundle.
                 this.emit('end');
