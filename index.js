@@ -713,7 +713,18 @@ function addModuleMappingTransforms(bundle, bundler) {
 function less(src, targetDir) {
     var less = require('gulp-less');
     gulp.src(src)
-        .pipe(less())
+        .pipe(less().on('error', function (err) {
+            logger.logError('LESS processing error:');
+            logger.logError('\tmessage: ' + err.message);
+            logger.logError('\tline #:  ' + err.line);
+            logger.logError('\textract: ' + JSON.stringify(err.extract));
+            if (exports.isRebundle()) {
+                // ignore failures if we are running rebundle.
+                this.emit('end');
+            } else {
+                throw 'LESS processing error. See above for details.';
+            }
+        }))
         .pipe(gulp.dest(targetDir));
     logger.logInfo("LESS CSS pre-processing completed to '" + targetDir + "'.");
 }
