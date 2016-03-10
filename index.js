@@ -9,6 +9,7 @@ var _string = require('underscore.string');
 var fs = require('fs');
 var args = require('./internal/args');
 var logger = require('./internal/logger');
+var notifier = require('./internal/notifier');
 var paths = require('./internal/paths');
 var dependencies = require('./internal/dependecies');
 var maven = require('./internal/maven');
@@ -518,10 +519,12 @@ exports.bundle = function(moduleToBundle, as) {
             
             return bundler.bundle()
                 .on('error', function (err) {
+                    logger.logError('Browserify bundle processing error');
                     if (err) {
-                        logger.logError('\terror: ' + err, 'Browserify bundle processing error:');
+                        logger.logError('\terror: ' + err);
                     }
                     if (exports.isRebundle() || exports.isRetest()) {
+                        notifier.notify('rebundle failure', 'See console for details.');
                         // ignore failures if we are running rebundle/retesting.
                         this.emit('end');
                     } else {
@@ -595,7 +598,18 @@ var tasks = {
                 jasmineDone: function () {
                     gulp.emit('testing_completed');
                 }                
-            }]}));
+            }]})
+            .on('error', function (err) {
+                if (exports.isRebundle() || exports.isRetest()) {
+                    notifier.notify('Jasmine test failures', 'See console for details.');
+                    // ignore failures if we are running rebundle/retesting.
+                    this.emit('end');
+                } else {
+                    throw 'Jasmine test run failure. See above for details.';
+                }
+            })
+            )
+        ;
     },
     bundle: function() {
         if (bundles.length === 0) {
@@ -727,15 +741,16 @@ function less(src, targetDir) {
     var less = require('gulp-less');
     gulp.src(src)
         .pipe(less().on('error', function (err) {
+            logger.logError('LESS processing error:');
             if (err) {
-                var detail = '\tmessage: ' + err.message + '\n';
-                detail += '\tline #:  ' + err.line + '\n';
+                logger.logError('\tmessage: ' + err.message);
+                logger.logError('\tline #:  ' + err.line);
                 if (err.extract) {
-                    detail += '\textract: ' + JSON.stringify(err.extract);
+                    logger.logError('\textract: ' + JSON.stringify(err.extract));
                 }
-                logger.logError(detail, 'LESS processing error');
             }
             if (exports.isRebundle() || exports.isRetest()) {
+                notifier.notify('LESS processing error', 'See console for details.');
                 // ignore failures if we are running rebundle/retesting.
                 this.emit('end');
             } else {
