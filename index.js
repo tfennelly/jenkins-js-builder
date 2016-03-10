@@ -516,8 +516,22 @@ exports.bundle = function(moduleToBundle, as) {
                 preBundleListeners[i].call(bundle, bundler);
             }
             
-            return bundler.bundle().pipe(source(bundle.bundleOutputFile))
-                .pipe(gulp.dest(bundleTo));
+            return bundler.bundle()
+                .on('error', function (err) {
+                    logger.logError('Browserify bundle processing error:');
+                    if (err) {
+                        logger.logError('\terror: ' + err);
+                    }
+                    if (exports.isRebundle() || exports.isRetest()) {
+                        // ignore failures if we are running rebundle/retesting.
+                        this.emit('end');
+                    } else {
+                        throw 'Browserify bundle processing error. See above for details.';
+                    }
+                })
+                .pipe(source(bundle.bundleOutputFile))
+                .pipe(gulp.dest(bundleTo))
+                ;
         });
     }
     
@@ -722,8 +736,8 @@ function less(src, targetDir) {
                     logger.logError('\textract: ' + JSON.stringify(err.extract));
                 }
             }
-            if (exports.isRebundle()) {
-                // ignore failures if we are running rebundle.
+            if (exports.isRebundle() || exports.isRetest()) {
+                // ignore failures if we are running rebundle/retesting.
                 this.emit('end');
             } else {
                 throw 'LESS processing error. See above for details.';
