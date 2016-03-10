@@ -16,7 +16,7 @@ exports.exec = function(langConfig, lintConfig) {
         logger.logInfo('Code linting is disabled.');
         return;
     }
-    
+
     if (hasJsHintConfig) {
         // We only use jshint if it's explicitly configured
         // with a .jshintrc file.
@@ -29,11 +29,11 @@ exports.exec = function(langConfig, lintConfig) {
 function runJsHint(lintConfig) {
     var jshint = require('gulp-jshint');
     var jshintConfig;
-    
+
     if (!hasJsHintConfig) {
         logger.logInfo('\t- Using default JSHint configuration (in js-builder). Override by defining a .jshintrc in this folder.');
         jshintConfig = require('../res/default.jshintrc');
-    }        
+    }
     function _runJsHint(pathSet) {
         for (var i = 0; i < pathSet.length; i++) {
             // TODO: eslint for .jsx and .es6 files.
@@ -54,7 +54,7 @@ function runJsHint(lintConfig) {
 function runEslint(langConfig, lintConfig) {
     var eslint = require('gulp-eslint');
     var eslintConfig;
-    
+
     if (!hasEsLintConfig) {
         if (hasJSX) {
             logger.logInfo('\t- Using the "react" eslint configuration from eslint-config-jenkins. Override by defining a .eslintrc in this folder (if you really must).');
@@ -76,13 +76,20 @@ function runEslint(langConfig, lintConfig) {
         // Has ESLint fixed the file contents?
         return fixLint && file.eslint != null && file.eslint.fixed;
     }
-    function fileOutputPath(file) {
-        return paths.parentDir(file.path);
-    }
-    
-    function _runEsLint(pathSet) {
+
+    function _runEsLint(pathSet, patterns) {
+
+        function getSrcPaths(path) {
+            var srcPaths = [];
+            for (var i = 0; i < patterns.length; i++) {
+                srcPaths.push(path + '/' + patterns[i]);
+            }
+            return srcPaths;
+        }
+
         for (var i = 0; i < pathSet.length; i++) {
-            gulp.src(['./index.js', pathSet[i] + '/**/*.js', pathSet[i] + '/**/*.jsx', pathSet[i] + '/**/*.es6'])
+            var srcPaths = getSrcPaths(pathSet[i]);
+            gulp.src(srcPaths)
                 .pipe(eslint(eslintConfig))
                 .pipe(eslint.format())
                 .pipe(eslint.results(function (results) {
@@ -93,21 +100,22 @@ function runEslint(langConfig, lintConfig) {
                         }
                         if (results.errorCount > 0) {
                             logger.logError('\tErrors:   ' + results.errorCount);
-                            if (!args.isArgvSpecified('--continueOnLint')) {
+                            if (!fixLint && !args.isArgvSpecified('--continueOnLint')) {
                                 logger.logError('There are eslint errors. Failing the build now. (--continueOnLint to continue on lint errors)');
                                 process.exit(1);
                             }
                         }
                     }
-                })
-                .pipe(gulpIf(isFixed, gulp.dest(fileOutputPath)))    
-                );
+                }))
+                .pipe(gulpIf(isFixed, gulp.dest(pathSet[i])))
+            ;
         }
     }
     if (lintConfig.src) {
-        _runEsLint(paths.srcPaths);
+        _runEsLint([cwd], ['index.js']);
+        _runEsLint(paths.srcPaths, ['**/*.js', '**/*.jsx', '**/*.es6']);
     }
     if (lintConfig.tests) {
-        _runEsLint([paths.testSrcPath]);
+        _runEsLint([paths.testSrcPath], ['**/*.js', '**/*.jsx', '**/*.es6']);
     }
 }
