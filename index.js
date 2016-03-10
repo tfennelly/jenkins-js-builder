@@ -518,9 +518,8 @@ exports.bundle = function(moduleToBundle, as) {
             
             return bundler.bundle()
                 .on('error', function (err) {
-                    logger.logError('Browserify bundle processing error:');
                     if (err) {
-                        logger.logError('\terror: ' + err);
+                        logger.logError('\terror: ' + err, 'Browserify bundle processing error:');
                     }
                     if (exports.isRebundle() || exports.isRetest()) {
                         // ignore failures if we are running rebundle/retesting.
@@ -728,13 +727,13 @@ function less(src, targetDir) {
     var less = require('gulp-less');
     gulp.src(src)
         .pipe(less().on('error', function (err) {
-            logger.logError('LESS processing error:');
             if (err) {
-                logger.logError('\tmessage: ' + err.message);
-                logger.logError('\tline #:  ' + err.line);
+                var detail = '\tmessage: ' + err.message + '\n';
+                detail += '\tline #:  ' + err.line + '\n';
                 if (err.extract) {
-                    logger.logError('\textract: ' + JSON.stringify(err.extract));
+                    detail += '\textract: ' + JSON.stringify(err.extract);
                 }
+                logger.logError(detail, 'LESS processing error');
             }
             if (exports.isRebundle() || exports.isRetest()) {
                 // ignore failures if we are running rebundle/retesting.
