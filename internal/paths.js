@@ -74,6 +74,9 @@ exports.mkdirp = function(thePath) {
     }
 };
 
+/**
+ * Do files with the specified extension exist in any of the src directories.
+ */
 exports.hasSourceFiles = function(ext) {
     var glob = require('glob');
     var hasFiles = false;
