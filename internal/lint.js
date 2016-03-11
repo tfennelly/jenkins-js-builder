@@ -3,13 +3,18 @@ var gulpIf = require('gulp-if');
 var fs = require('fs');
 var cwd = process.cwd();
 var paths = require('./paths');
+var path = require('path');
 var logger = require('./logger');
 var args = require('./args');
 var hasJsHintConfig = fs.existsSync(cwd + '/.jshintrc');
-var hasEsLintConfig = fs.existsSync(cwd + '/.eslintrc');
+var esLintConfig = paths.findClosest('.eslintrc');
 
 var hasJSX = paths.hasSourceFiles('jsx');
 var hasES6 = paths.hasSourceFiles('es6');
+
+if (esLintConfig) {
+    esLintConfig = path.relative(cwd, esLintConfig);
+}
 
 exports.exec = function(langConfig, lintConfig) {
     if (lintConfig.level === 'none') {
@@ -55,7 +60,7 @@ function runEslint(langConfig, lintConfig) {
     var eslint = require('gulp-eslint');
     var eslintConfig;
 
-    if (!hasEsLintConfig) {
+    if (!esLintConfig) {
         if (hasJSX) {
             logger.logInfo('\t- Using the "react" eslint configuration from eslint-config-jenkins. Override by defining a .eslintrc in this folder (if you really must).');
             eslintConfig = require('@jenkins-cd/eslint-config-jenkins/react');
@@ -66,6 +71,8 @@ function runEslint(langConfig, lintConfig) {
             logger.logInfo('\t- Using the "es5" eslint configuration from eslint-config-jenkins. Override by defining a .eslintrc in this folder (if you really must).');
             eslintConfig = require('@jenkins-cd/eslint-config-jenkins/es5');
         }
+    } else {
+        logger.logInfo('\t- Using ' + esLintConfig + '. Override by defining a .eslintrc in this folder.');
     }
 
     var fixLint = args.isArgvSpecified('--fixLint');
@@ -102,7 +109,10 @@ function runEslint(langConfig, lintConfig) {
                             logger.logError('\tErrors:   ' + results.errorCount);
                             if (!fixLint && !args.isArgvSpecified('--continueOnLint')) {
                                 logger.logError('There are eslint errors. Failing the build now. (--continueOnLint to continue on lint errors)');
+                                logger.logInfo('** try "gulp lint --fixLint" to fix some/all linting issues **');
                                 process.exit(1);
+                            } else {
+                                logger.logInfo('** try "gulp lint --fixLint" to fix some/all linting issues **');
                             }
                         }
                     }
