@@ -98,3 +98,28 @@ exports.hasSourceFiles = function(ext) {
     
     return hasFiles;
 };
+
+/**
+ * Search back through the directory hierarchy looking for the named file,
+ * starting at the {@code startDir}, or the current working directory if
+ * not {@code startDir} is not specific.
+ * @param fileName The file name to look for.
+ * @param startDir The directory to start looking from.
+ * @returns The closest directory containing the file, or {@code undefined} if no
+ * such file was found in the hierarchy.
+ */
+exports.findClosest = function(fileName, startDir) {
+    var lookInDir = (startDir || cwd);
+    var existsCheckPath = path.resolve(lookInDir, fileName);
+    
+    if (fs.existsSync(existsCheckPath)) {
+        return existsCheckPath;
+    }
+    
+    var parentDir = exports.parentDir(lookInDir);
+    if (parentDir && parentDir !== lookInDir) {
+        return exports.findClosest(fileName, parentDir);
+    }
+    
+    return undefined;
+};

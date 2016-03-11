@@ -27,4 +27,10 @@ describe("paths test", function () {
         // Creating it again shouldn't throw a wobbler.
         paths.mkdirp(path);
     });
+    
+    it("- test findClosest", function () {
+        expect(__dirname).toBeDefined();
+        expect(paths.findClosest('package.json', __dirname)).toBeDefined();
+        expect(paths.findClosest('blah-xxx-whatever-1234.xyz', __dirname)).not.toBeDefined();
+    });
 });
