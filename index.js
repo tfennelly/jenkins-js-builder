@@ -15,6 +15,8 @@ var dependencies = require('./internal/dependecies');
 var maven = require('./internal/maven');
 var testWebServer;
 var globalModuleMappingArgs = [];
+var skipBundle = args.isArgvSpecified('--skipBundle');
+var skipTest = (args.isArgvSpecified('--skipTest') || args.isArgvSpecified('--skipTests'));
 
 var cwd = process.cwd();
 var hasJenkinsJsModulesDependency = dependencies.hasJenkinsJsModulesDep();
@@ -261,6 +263,10 @@ exports.bundle = function(moduleToBundle, as) {
     bundle.moduleMappings = [];
     bundle.minifyBundle = args.isArgvSpecified('--minify');
     bundle.inAdjunctPackage = function(packageName) {
+        if (skipBundle) {
+            return bundle;
+        }
+
         if (!packageName) {
             gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + moduleToBundle + "'. You can't specify a 'null' adjunct package name."));
             throw "'bundle' registration failed. See error above.";
@@ -271,16 +277,25 @@ exports.bundle = function(moduleToBundle, as) {
         return bundle;
     };
     bundle.generateNoImportsBundle = function() {
-        // Create a self contained version of the bundle (no imports) - useful for 
+        if (skipBundle) {
+            return bundle;
+        }
+        // Create a self contained version of the bundle (no imports) - useful for
         // testing and probably more.
         defineBundleTask(bundle, false);
         return bundle;
     };
     bundle.minify = function() {
+        if (skipBundle) {
+            return bundle;
+        }
         bundle.minifyBundle = true;
         return bundle;
     };
     bundle.inDir = function(dir) {
+        if (skipBundle) {
+            return bundle;
+        }
         if (!dir) {
             gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + moduleToBundle + "'. You can't specify a 'null' dir name when calling inDir."));
             throw "'bundle' registration failed. See error above.";
@@ -291,6 +306,9 @@ exports.bundle = function(moduleToBundle, as) {
         return bundle;
     };
     bundle.asJenkinsModuleResource = function() {
+        if (skipBundle) {
+            return bundle;
+        }
         dependencies.assertHasJenkinsJsModulesDependency('Cannot bundle "asJenkinsModuleResource".');
         assertBundleOutputUndefined();
         bundle.bundleAsJenkinsModule = true;
@@ -298,10 +316,16 @@ exports.bundle = function(moduleToBundle, as) {
         return bundle;
     };
     bundle.withTransforms = function(transforms) {
+        if (skipBundle) {
+            return bundle;
+        }
         bundle.bundleTransforms = transforms;
         return bundle;
     };
     bundle.withExternalModuleMapping = function(from, to, config) {
+        if (skipBundle) {
+            return bundle;
+        }
         dependencies.assertHasJenkinsJsModulesDependency('Cannot bundle "withExternalModuleMapping".');
         
         if (config === undefined) {
@@ -343,6 +367,9 @@ exports.bundle = function(moduleToBundle, as) {
     };
     
     bundle.less = function(src, targetDir) {
+        if (skipBundle) {
+            return bundle;
+        }
         bundle.lessSrcPath = src;
         if (targetDir) {
             bundle.lessTargetDir = targetDir;
@@ -350,6 +377,9 @@ exports.bundle = function(moduleToBundle, as) {
         return bundle;
     };
     bundle.export = function(toNamespace) {
+        if (skipBundle) {
+            return bundle;
+        }
         dependencies.assertHasJenkinsJsModulesDependency('Cannot bundle "export".');
         if (toNamespace) {
             bundle.bundleExport = true;
@@ -385,8 +415,12 @@ exports.bundle = function(moduleToBundle, as) {
             }
         }
         return undefined;
-    };    
-    
+    };
+
+    if (skipBundle) {
+        return bundle;
+    }
+
     bundles.push(bundle);
     
     function defineBundleTask(bundle, applyImports) {
@@ -795,8 +829,41 @@ function _stopTestWebServer() {
     }
 }
 
-// Defined default tasks. Can be overridden.
-exports.defineTasks(['lint', 'test', 'bundle', 'rebundle', 'retest']);
-
-var jsextensions = require('./internal/jsextensions');
-jsextensions.processExtensionPoints(exports);
+if (args.isArgvSpecified('--help')) {
+    logger.logInfo('**********************************************************************');
+    logger.logInfo(' For help, go to https://github.com/jenkinsci/js-builder');
+    logger.logInfo('**********************************************************************');
+    skipBundle = true;
+        gulp.task('default', function() {
+    });
+} else {
+    // Defined default tasks. Can be overridden.
+    var defaultTasks = [];
+    if (!args.isArgvSpecified('--skipLint')) {
+        defaultTasks.push('lint');
+    } else {
+        gulp.task('lint', function() {
+            logger.logInfo(' - lint skipped (--skipLint)');
+        });
+    }
+    if (!skipTest) {
+        defaultTasks.push('test');
+    } else {
+        gulp.task('test', function() {
+            logger.logInfo(' - tests skipped (--skipTests)');
+        });
+    }
+    if (!skipBundle) {
+        defaultTasks.push('bundle');
+    } else {
+        gulp.task('bundle', function() {
+            logger.logInfo(' - bundle skipped (--skipBundle)');
+        });
+    }
+    defaultTasks.push('rebundle');
+    defaultTasks.push('retest');
+    exports.defineTasks(defaultTasks);
+    
+    var jsextensions = require('./internal/jsextensions');
+    jsextensions.processExtensionPoints(exports);
+}

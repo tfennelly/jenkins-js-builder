@@ -343,6 +343,14 @@ builder.src(['src/main/js', 'src/main/less']);
 
 A number of `js-builder` options can be specified on the command line.
 
+## `--help`
+
+Get a link to this documentation.
+ 
+```sh
+$ gulp --help
+```
+
 ## `--minify`
 
 Passing `--minify` on the command line will result in the minification of all generated bundles.
@@ -353,11 +361,18 @@ $ gulp --minify
 
 ## `--test`
 
-
 Run a single test.
  
 ```sh
 $ gulp --test configeditor
+```
+
+## `--skipTest`, `--skipLint`, `--skipBundle`
+
+Skip one or more of the tasks/phases e.g.
+ 
+```sh
+$ gulp --skipTest --skipLint
 ```
 
 The above example would run test specs matching the `**/configeditor*-spec.js` pattern (in the test source directory).
