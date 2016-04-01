@@ -367,6 +367,8 @@ Run a single test.
 $ gulp --test configeditor
 ```
 
+The above example would run test specs matching the `**/configeditor*-spec.js` pattern (in the test source directory).
+
 ## `--skipTest`, `--skipLint`, `--skipBundle`
 
 Skip one or more of the tasks/phases e.g.
@@ -374,8 +376,6 @@ Skip one or more of the tasks/phases e.g.
 ```sh
 $ gulp --skipTest --skipLint
 ```
-
-The above example would run test specs matching the `**/configeditor*-spec.js` pattern (in the test source directory).
 
 # Maven Integration
 Hooking a [Gulp] based build into a Maven build involves adding a few Maven `<profile>`s to the
