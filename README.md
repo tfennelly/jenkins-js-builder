@@ -95,19 +95,30 @@ See next section.
 
 # Predefined Gulp Tasks
 
-The following sections describe the available predefined [Gulp] tasks. The `bundle` and `test` tasks are
-auto-installed as the default tasks.
+The following sections describe the available predefined [Gulp] tasks.
 
-## 'test' Task
-
-Run all Jasmine style tests. The default location for tests is the `spec` folder. The file names need to match the
-pattern "*-spec.js". The default location can be overridden by calling `builder.tests(<new-path>)`.
-
-See [jenkins-js-test] for more on testing.
+> __Note__: If no task is specified (i.e. you just type `gulp` on its own), then the `bundle` and `test` tasks are auto-installed (i.e. auto-run) as the default tasks.
 
 ## 'bundle' Task 
 Run the 'bundle' task. See detail on this in the <a href="#bundling">dedicated section titled "Bundling"</a> (below). 
+
+```
+gulp bundle
+```
  
+## 'test' Task
+
+Run tests. The default location for tests is the `spec` folder. The file names need to match the
+pattern "*-spec.js". The default location can be overridden by calling `builder.tests(<new-path>)`.
+
+```
+gulp test
+```
+
+> See [jenkins-js-test] for more on testing.
+> See <a href="#command-line-options">command line options</a> for `--skipTest` option.
+> See <a href="#command-line-options">command line options</a> for `--test` option (for running a single test spec).
+
 ## 'rebundle' Task
 
 Watch module source files (`index.js`, `./lib/**/*.js` and `./lib/**/*.hbs`) for change, auto-running the
@@ -119,6 +130,26 @@ order to run it e.g.
 ```
 gulp rebundle
 ```
+
+## 'retest' Task
+
+Watch module source files changes (including test code) and rerun the tests e.g.
+
+```
+gulp rebundle
+```
+
+## 'lint' Task
+
+Run linting - ESLint or JSHint. ESlint is the default if no `.eslintrc` or `.jshintrc` file is found 
+(using [eslint-config-jenkins](https://www.npmjs.com/package/@jenkins-cd/eslint-config-jenkins)) in the working
+directory (`.eslintrc` is also searched for in parent directories).
+
+```
+gulp lint
+```
+
+> See <a href="#command-line-options">command line options</a> for `--skipLint` option.
 
 # Bundling
 As stated in the "Features" section above, much of the usefulness of `js-builder` lies in how it
@@ -343,12 +374,12 @@ builder.src(['src/main/js', 'src/main/less']);
 
 A number of `js-builder` options can be specified on the command line.
 
-## `--help`
+## `--h` (or `--help`)
 
 Get a link to this documentation.
  
 ```sh
-$ gulp --help
+$ gulp --h
 ```
 
 ## `--minify`
