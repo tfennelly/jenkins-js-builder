@@ -30,6 +30,12 @@ var jsmodulesBasePath = './src/main/webapp/jsmodules/';
 var rebundleRunning = false;
 var retestRunning = false;
 
+logger.logInfo('**********************************************************************');
+logger.logInfo('This build is using Jenkins JS Builder.');
+logger.logInfo('  For command line options and other help, go to');
+logger.logInfo('  https://github.com/jenkinsci/js-builder');
+logger.logInfo('**********************************************************************');
+
 if (maven.isMavenProject) {
     logger.logInfo("Maven project.");
     if (maven.isHPI()) {
@@ -144,11 +150,15 @@ exports.defineTasks = function(tasknames) {
 
 exports.defineTask = function(taskname, gulpTask) {
     if (taskname === 'test') {
-        // Want to make sure the 'bundle' task gets run with the 'test' task.
-        gulp.task('test', ['bundle'], gulpTask);
+        if (!skipTest) {
+            // Want to make sure the 'bundle' task gets run with the 'test' task.
+            gulp.task('test', ['bundle'], gulpTask);
+        }
     } else if (taskname === 'bundle') {
-        // Define the bundle task so that it depends on the "sub" bundle tasks.
-        gulp.task('bundle', bundleDependencyTaskNames, gulpTask);
+        if (!skipBundle) {
+            // Define the bundle task so that it depends on the "sub" bundle tasks.
+            gulp.task('bundle', bundleDependencyTaskNames, gulpTask);
+        }
     } else if (taskname === 'rebundle') {
         // Run bundle at the start of rebundle
         gulp.task('rebundle', ['bundle'], gulpTask);
@@ -829,13 +839,9 @@ function _stopTestWebServer() {
     }
 }
 
-if (args.isArgvSpecified('--help')) {
-    logger.logInfo('**********************************************************************');
-    logger.logInfo(' For help, go to https://github.com/jenkinsci/js-builder');
-    logger.logInfo('**********************************************************************');
+if (args.isArgvSpecified('--h') || args.isArgvSpecified('--help')) {
     skipBundle = true;
-        gulp.task('default', function() {
-    });
+    gulp.task('default', function() {});
 } else {
     // Defined default tasks. Can be overridden.
     var defaultTasks = [];
