@@ -73,6 +73,9 @@ function runEslint(langConfig, lintConfig) {
         }
     } else {
         logger.logInfo('\t- Using ' + esLintConfig + '. Override by defining a .eslintrc in this folder.');
+        eslintConfig = {
+            extends: esLintConfig
+        };
     }
 
     var fixLint = args.isArgvSpecified('--fixLint');
