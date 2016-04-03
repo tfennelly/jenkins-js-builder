@@ -69,9 +69,7 @@ Add a `gulpfile.js` (see [Gulp]) in the same folder as the `package.json`. Then 
 ```javascript
 var builder = require('@jenkins-cd/js-builder');
 
-builder.defineTasks(['test', 'bundle', 'rebundle']);
-
-builder.bundle('./index.js', 'myappbundle.js').inAdjunctPackage('com.acme');
+builder.bundle('./index.js', 'myappbundle.js').inDir('target/classes/org/jenkins/myapp/ui');
 
 ```
 
@@ -435,25 +433,39 @@ And to skip linting completely:
 $ gulp --skipLint
 ```
 
-# Maven Integration
+# Maven Integration (for plugins)
 Hooking a [Gulp] based build into a Maven build involves adding a few Maven `<profile>`s to the
-Maven project's `pom.xml`.
+Maven project's `pom.xml`. For Jenkins plugins, the easiest way to get this integration is to simply
+have you plugin `pom.xml` depend on the Jenkins [plugin-pom].
 
-We have extracted these into a [sample_extract_pom.xml](res/sample_extract_pom.xml)
-from which they can be copied.
+These integrations hook the [Gulp] building into the maven build lifecycles. A few `mvn` build
+switches are supported, as described in the following sections.
 
-> __NOTE__: We hope to put these `<profile>` definitions into one of the top level Jenkins parent POMs. Once that's 
-> done and your project has that parent POM as a parent, then none of this will be required.
+## `-DcleanNode`
 
-With these `<profiles>`s installed, Maven will run [Gulp] as part of the build. 
+Cleans out the local node and NPM artifacts and resource (including the `node_modules` folder).
 
-> - runs `npm install` during the `initialize` phase, 
-> - runs `gulp bundle` during the `generate-sources` phase and
-> - runs `gulp test` during the `test` phase). 
+```
+$ mvn clean -DcleanNode
+```
 
-You can also execute:
+## `-DskipTests`
 
-* `mvn clean -DcleanNode`: Cleans out the local node and NPM artifacts and resource (including the `node_modules` folder).
+This switch is a standard `mvn` switch and is honoured by the profiles defined in the [plugin-pom].
+
+```
+$ mvn clean -DskipTests
+```
+
+`-DskipTests` also skips linting. See `-DskipLint`
+
+## `-DskipLint`
+
+Skip linting.
+
+```
+$ mvn clean -DskipLint
+```
 
 [bundle]: https://github.com/jenkinsci/js-modules/blob/master/FAQs.md#what-is-the-difference-between-a-module-and-a-bundle
 [js-modules]: https://github.com/jenkinsci/js-modules
@@ -473,3 +485,4 @@ You can also execute:
 [Handlebars]: http://handlebarsjs.com/
 [Jasmine]: http://jasmine.github.io/
 [Moment.js]: http://momentjs.com/
+[plugin-pom]: https://github.com/jenkinsci/plugin-pom
