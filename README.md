@@ -149,7 +149,7 @@ directory (`.eslintrc` is also searched for in parent directories).
 gulp lint
 ```
 
-> See <a href="#command-line-options">command line options</a> for `--skipLint` option.
+> See <a href="#command-line-options">command line options</a> for `--skipLint`, `--continueOnLint` and `--fixLint` options.
 
 # Bundling
 As stated in the "Features" section above, much of the usefulness of `js-builder` lies in how it
@@ -400,12 +400,39 @@ $ gulp --test configeditor
 
 The above example would run test specs matching the `**/configeditor*-spec.js` pattern (in the test source directory).
 
-## `--skipTest`, `--skipLint`, `--skipBundle`
+## Skip options: `--skipTest`, `--skipLint`, `--skipBundle`
 
 Skip one or more of the tasks/phases e.g.
  
 ```sh
 $ gulp --skipTest --skipLint
+```
+
+## Lint options: `--skipLint`, `--continueOnLint`, `--fixLint`
+
+Many of the more irritating formatting rule errors/warnings can be fixed automatically by running
+with the `--fixLint` option, making them a little less irritating e.g.
+ 
+```sh
+$ gulp --fixLint
+```
+
+Or if you are just running the `lint` task on it's own (explicitly):
+ 
+```sh
+$ gulp lint --fixLint
+```
+
+Alternatively, if you wish to run `lint` and see all of the lint errors, but not fail the build:
+ 
+```sh
+$ gulp --continueOnLint
+```
+
+And to skip linting completely:
+ 
+```sh
+$ gulp --skipLint
 ```
 
 # Maven Integration
