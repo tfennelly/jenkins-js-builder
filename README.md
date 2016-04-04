@@ -10,6 +10,7 @@ __Table of Contents__:
     <a href="#install">Install</a><br/>
     <a href="#general-usage">General Usage</a><br/>
     <a href="#predefined-gulp-tasks">Predefined Gulp Tasks</a><br/>
+    <a href="#redefining-one-of-the-predefined-gulp-tasks">Redefining one of the predefined Gulp tasks</a><br/>
     <a href="#bundling">Bundling</a><br/>
     <a href="#setting-src-and-test-spec-paths">Setting 'src' and 'test' (spec) paths</a><br/>
     <a href="#command-line-options">Command line options</a><br/>
@@ -58,7 +59,7 @@ The responsibilities of the components in the above diagram can be summarized as
 npm install --save-dev @jenkins-cd/js-builder
 ```
 
-> This assumes you have [node.js] v4.0.0 (minimum) installed on your local development environment.
+> This assumes you have [node.js] (minimum v4.0.0) installed on your local development environment.
 
 > Note this is only required if you intend developing [js-modules] compatible module bundles. Plugins using this should automatically handle all build aspects via maven (see later) i.e. __simple building of a plugin should require no machine level setup__.
 
@@ -69,27 +70,10 @@ Add a `gulpfile.js` (see [Gulp]) in the same folder as the `package.json`. Then 
 ```javascript
 var builder = require('@jenkins-cd/js-builder');
 
-builder.bundle('./index.js', 'myappbundle.js').inDir('target/classes/org/jenkins/myapp/ui');
+builder.bundle('./index.js', 'myappbundle.js')
+    .inDir('target/classes/org/jenkins/myapp/ui');
 
 ```
-
-__Notes__:
-
-* See the "`defineTasks`" section for details of the available tasks.
-* See the "`bundle`" section for details of the `bundle` command.
-
-## `defineTasks`
-
-`js-builder` makes it possible to easily define a number of tasks. No tasks are turned on by default,
-so you can also just define your own tasks. To use the tasks defined in `js-builder`, simply call
-the `defineTasks` function:
-
-```javascript
-builder.defineTasks(['test', 'bundle', 'rebundle']);
-```
-
-See next section.
-
 
 # Predefined Gulp Tasks
 
@@ -148,6 +132,29 @@ gulp lint
 ```
 
 > See <a href="#command-line-options">command line options</a> for `--skipLint`, `--continueOnLint` and `--fixLint` options.
+
+# Redefining one of the predefined Gulp tasks
+
+There are times when you need to break out and redefine one of the predefined gulp tasks (see previous section).
+To redefine a task, you simply call `defineTask` again e.g. to redefine the `test` task to use mocha:
+
+```javascript
+builder.defineTask('test', function() {
+    var mocha = require('gulp-mocha');
+    var babel = require('babel-core/register');
+
+    builder.gulp.src('src/test/js/*-spec.js')
+        .pipe(mocha({
+            compilers: {js: babel}
+        })).on('error', function(e) {
+            if (builder.isRetest()) {
+                // ignore test failures if we are running retest.
+                return;
+            }
+            throw e;
+        });
+});
+```
 
 # Bundling
 As stated in the "Features" section above, much of the usefulness of `js-builder` lies in how it
@@ -370,7 +377,8 @@ builder.src(['src/main/js', 'src/main/less']);
 
 # Command line options
 
-A number of `js-builder` options can be specified on the command line.
+A number of `js-builder` options can be specified on the command line. If you are looking for
+
 
 ## `--h` (or `--help`)
 
@@ -433,12 +441,13 @@ And to skip linting completely:
 $ gulp --skipLint
 ```
 
-# Maven Integration (for plugins)
+# Maven Integration
 Hooking a [Gulp] based build into a Maven build involves adding a few Maven `<profile>`s to the
 Maven project's `pom.xml`. For Jenkins plugins, the easiest way to get this integration is to simply
-have you plugin `pom.xml` depend on the Jenkins [plugin-pom].
+have the plugin `pom.xml` depend on the Jenkins [plugin-pom]. For other project types, you'll need
+to copy those profiles locally (see [plugin-pom]).
 
-These integrations hook the [Gulp] building into the maven build lifecycles. A few `mvn` build
+These integrations hook the [Gulp] build into the maven build lifecycles. A few `mvn` build
 switches are supported, as described in the following sections.
 
 ## `-DcleanNode`
