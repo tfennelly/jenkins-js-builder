@@ -101,7 +101,7 @@ gulp test
 > See <a href="#command-line-options">command line options</a> for `--skipTest` option.
 > See <a href="#command-line-options">command line options</a> for `--test` option (for running a single test spec).
 
-## 'rebundle' Task
+## 'bundle:watch' Task
 
 Watch module source files (`index.js`, `./lib/**/*.js` and `./lib/**/*.hbs`) for change, auto-running the
 `bundle` task whenever changes are detected.
@@ -110,15 +110,15 @@ Note that this task will not be run by default, so you need to specify it explic
 order to run it e.g.
 
 ```
-gulp rebundle
+gulp bundle:watch
 ```
 
-## 'retest' Task
+## 'test:watch' Task
 
 Watch module source files changes (including test code) and rerun the tests e.g.
 
 ```
-gulp rebundle
+gulp test:watch
 ```
 
 ## 'lint' Task
@@ -148,7 +148,7 @@ builder.defineTask('test', function() {
             compilers: {js: babel}
         })).on('error', function(e) {
             if (builder.isRetest()) {
-                // ignore test failures if we are running retest.
+                // ignore test failures if we are running test:watch.
                 return;
             }
             throw e;
@@ -350,12 +350,12 @@ The default paths depend on whether or not running in a maven project.
 
 For a maven project, the default source and test/spec paths are:
 
-* __src__: `./src/main/js` and `./src/main/less` (used primarily by the `rebundle` task, watching these folders for source changes)
+* __src__: `./src/main/js` and `./src/main/less` (used primarily by the `bundle:watch` task, watching these folders for source changes)
 * __test__: `./src/test/js` (used by the `test` task)
 
 Otherwise, they are:
 
-* __src__: `./js` and `./less` (used primarily by the `rebundle` task, watching these folders for source changes)
+* __src__: `./js` and `./less` (used primarily by the `bundle:watch` task, watching these folders for source changes)
 * __test__: `./spec` (used by the `test` task)
 
 
