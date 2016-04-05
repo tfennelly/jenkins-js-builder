@@ -262,8 +262,8 @@ exports.bundle = function(moduleToBundle, as) {
     }
 
     function assertBundleOutputUndefined() {
-        if (bundle.bundleInDir || bundle.bundleAsJenkinsModule || bundle.bundleToAdjunctPackageDir) {
-            gutil.log(gutil.colors.red("Error: Invalid bundle registration. Bundle output (inAdjunctPackage, inDir, asJenkinsModuleResource) already defined."));
+        if (bundle.bundleInDir) {
+            gutil.log(gutil.colors.red("Error: Invalid bundle registration. Bundle output (inDir) already defined."));
             throw "'bundle' registration failed. See error above.";
         }
     }
@@ -272,20 +272,6 @@ exports.bundle = function(moduleToBundle, as) {
     bundle.bundleOutputFile = bundle.as + '.js';
     bundle.moduleMappings = [];
     bundle.minifyBundle = args.isArgvSpecified('--minify');
-    bundle.inAdjunctPackage = function(packageName) {
-        if (skipBundle) {
-            return bundle;
-        }
-
-        if (!packageName) {
-            gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + moduleToBundle + "'. You can't specify a 'null' adjunct package name."));
-            throw "'bundle' registration failed. See error above.";
-        }
-        assertBundleOutputUndefined();
-        bundle.bundleToAdjunctPackageDir = packageToPath(packageName);
-        gutil.log(gutil.colors.green("Bundle will be generated as an adjunct in '" + adjunctBasePath + "' as '" + packageName + "." + bundle.as + ".js'."));
-        return bundle;
-    };
     bundle.generateNoImportsBundle = function() {
         if (skipBundle) {
             return bundle;
@@ -312,17 +298,9 @@ exports.bundle = function(moduleToBundle, as) {
         }
         assertBundleOutputUndefined();
         bundle.bundleInDir = normalizePath(dir);
-        gutil.log(gutil.colors.green("Bundle will be generated in directory '" + bundle.bundleInDir + "' as '" + bundle.as + ".js'."));
-        return bundle;
-    };
-    bundle.asJenkinsModuleResource = function() {
-        if (skipBundle) {
-            return bundle;
+        if (bundle.isDuplicate === false) {
+            gutil.log(gutil.colors.green("Bundle of '" + moduleToBundle + "' will be generated in directory '" + bundle.bundleInDir + "' as '" + bundle.as + ".js'."));
         }
-        dependencies.assertHasJenkinsJsModulesDependency('Cannot bundle "asJenkinsModuleResource".');
-        assertBundleOutputUndefined();
-        bundle.bundleAsJenkinsModule = true;
-        gutil.log(gutil.colors.green("Bundle will be generated as a Jenkins Module in '" + jsmodulesBasePath + "' as '" + bundle.as + ".js'."));
         return bundle;
     };
     bundle.withTransforms = function(transforms) {
@@ -337,6 +315,13 @@ exports.bundle = function(moduleToBundle, as) {
             return bundle;
         }
         dependencies.assertHasJenkinsJsModulesDependency('Cannot bundle "withExternalModuleMapping".');
+        
+        // 'to' is optional, so maybe the second arg is a 
+        // config object. 
+        if (to && typeof to === 'object') {
+            config = to;
+            to = undefined;
+        }
 
         if (config === undefined) {
             config = {};
@@ -351,13 +336,23 @@ exports.bundle = function(moduleToBundle, as) {
             config = JSON.parse(JSON.stringify(config));
         }
 
-        if (!from || !to) {
-            var message = "Cannot call 'withExternalModuleMapping' without defining both 'to' and 'from' module names.";
+        if (!from) {
+            var message = "Cannot call 'withExternalModuleMapping' without defining the 'from' module name.";
             logger.logError(message);
             throw message;
         }
+        if (!to) {
+            // The default semver "scope" will be the minor version i.e.
+            // so long as the major and minor versions are compatible, then
+            // we're good e.g. A-3.3.1 and A-3.3.9 are considered compatible as
+            // both will be registered as A-3.3.x. 
+            to = 'semver/minor';
+        }
 
-        if (to === bundle.getModuleQName()) {
+        if (_string.startsWith(to, 'semver/')) {
+            var adjExt = require('./internal/adjunctexternal');
+            to = adjExt.bundleFor(exports, from, to.substring('semver/'.length));
+        } else if (to === bundle.getModuleQName()) {
             // Do not add mappings to itself.
             return bundle;
         }
@@ -431,6 +426,20 @@ exports.bundle = function(moduleToBundle, as) {
         return bundle;
     }
 
+    bundle.isDuplicate = false;
+    for (var i = 0; i < bundles.length; i++) {
+        if (bundles[i].bundleModule === bundle.bundleModule && bundles[i].as === bundle.as) {
+            bundle.isDuplicate = true;
+            break;
+        }
+    }
+    
+    if (bundle.isDuplicate === true) {
+        // Just return the bundle object, but do not register a task
+        // for creating it.
+        return bundle;
+    }
+    
     bundles.push(bundle);
 
     function defineBundleTask(bundle, applyImports) {
@@ -747,7 +756,7 @@ function addModuleMappingTransforms(bundle, bundler) {
                                 content +
                                 "\n" +
                                 "    });\n\n";
-
+                        
                         // perform addModuleCSSToPage actions for mappings that requested it.
                         // We don't need the imports to complete before adding these. We can just add
                         // them immediately.

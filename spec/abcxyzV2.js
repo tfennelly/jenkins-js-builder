@@ -1,2 +1,1 @@
-var jsModules = require('@jenkins-cd/js-modules');
-jsModules.export('abcxyz', 'abcxyzV2', {});
+require('@jenkins-cd/js-modules');

@@ -179,49 +179,10 @@ var bundleSpec = builder.bundle('<path-to-main-module>', '<bundle-name>');
 * `bundle-name` __(Optional)__: The name of the bundle to be generated. If not specified, the "main" module name will be used.  
 
 ## Step 2: Specify Bundle Output Location
-`js-builder` lets you configure where the generated [bundle] is output to. There are 3 possible
-options for this.
-
-> __Option 1__: Bundle as a [js-modules] "resource", which means it will be placed in the
-> `./src/main/webapp/jsmodules` folder, from where it can be `import`ed at runtime. This option
-> should be used in conjunction with `bundleSpec.export()` (see below).
-
-```javascript
-bundleSpec.asJenkinsModuleResource();
-```
-
-> __Option 2__: Bundle in a specified directory/folder.
+`js-builder` lets you configure where the generated [bundle] is output to via the `inDir` function.
 
 ```javascript
 bundleSpec.inDir('<path-to-dir>');
-```
-
-> __Option 3__: Bundle as an "adjunct", which means the bundle is put into a package 
-> in `./target/generated-adjuncts/`. If using this option, make sure the project's
-> `pom.xml` has the appropriate build `<resource>` configuration (see below).
->
-> Of course, you can also just use the `bundleSpec.inDir` option (num 2 above) if you'd prefer to handle
-> adjuncts differently i.e. use `bundleSpec.inDir` to generate the bundle into a dir that gets picked up by your
-> maven build, placing the bundle in the correct place on the Java classpath.
-
-```javascript
-bundleSpec.inAdjunctPackage('com.acme');
-```
-
-An example of how to configure the build `<resource>` in your `pom.xml`
-file (if using `inAdjunctPackage`), allowing the adjunct to be referenced from a Jelly file.
-
-```xml
-<build>
-    <resources>
-        <resource>
-            <directory>src/main/resources</directory>
-        </resource>
-        <resource>
-            <directory>target/generated-adjuncts</directory>
-        </resource>
-    </resources>
-</build>
 ```
 
 ## Step 3 (Optional): Specify LESS Processing
