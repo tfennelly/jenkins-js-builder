@@ -768,11 +768,16 @@ function addModuleMappingTransforms(bundle, bundler) {
                         "/*** Start Module Exec Function ***************************************/\n" +
                         "function ___$$$___exec() {\n" +
                             content +
-                        "\n" +
+                        //"\n" +
+                        //"   console.debug('jenkins-js-modules: JS bundle " + (bundle.bundleExportNamespace || 'nns') + ":" + bundle.as + " started.');" +
+                        //"\n" +
                         "};\n" +
                         "/*** End Module Exec Function   ***************************************/\n" +
                         "\n" +
                         "if (___$$$___requiredModuleMappings.length > 0) {\n" +
+                        //"\n" +
+                        //"   console.debug('jenkins-js-modules: JS bundle " + (bundle.bundleExportNamespace || 'nns') + ":" + bundle.as + " waiting on bundle loads: ', ___$$$___requiredModuleMappings);" +
+                        //"\n" +
                         "    ___$$$___jsModules.import.apply(___$$$___jsModules.import, ___$$$___requiredModuleMappings)\n" +
                         "        .onFulfilled(function() {\n" +
                         "\n" +
