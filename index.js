@@ -214,7 +214,10 @@ exports.onTaskEnd = function(taskName, callback) {
 };
 
 exports.withExternalModuleMapping = function(from, to, config) {
-    globalModuleMappingArgs.push(arguments);
+    var moduleMapping = toModuleMapping(from, to, config);
+    if (moduleMapping) {
+        globalModuleMappingArgs.push(moduleMapping);
+    }
     return exports;
 };
 
@@ -310,64 +313,22 @@ exports.bundle = function(moduleToBundle, as) {
         bundle.bundleTransforms = transforms;
         return bundle;
     };
-    bundle.withExternalModuleMapping = function(from, to, config) {
+    
+    bundle._withExternalModuleMapping = function(moduleMapping) {
         if (skipBundle) {
             return bundle;
         }
-        dependencies.assertHasJenkinsJsModulesDependency('Cannot bundle "withExternalModuleMapping".');
-        
-        // 'to' is optional, so maybe the second arg is a 
-        // config object. 
-        if (to && typeof to === 'object') {
-            config = to;
-            to = undefined;
-        }
-
-        if (config === undefined) {
-            config = {};
-        } else if (typeof config === 'string') {
-            // config is the require mapping override (backward compatibility).
-            config = {
-                require: config
-            };
-        } else {
-            // Clone the config object because we're going to be
-            // making changes to it.
-            config = JSON.parse(JSON.stringify(config));
-        }
-
-        if (!from) {
-            var message = "Cannot call 'withExternalModuleMapping' without defining the 'from' module name.";
-            logger.logError(message);
-            throw message;
-        }
-        if (!to) {
-            // The default semver "scope" will be the minor version i.e.
-            // so long as the major and minor versions are compatible, then
-            // we're good e.g. A-3.3.1 and A-3.3.9 are considered compatible as
-            // both will be registered as A-3.3.x. 
-            to = 'semver/minor';
-        }
-
-        if (_string.startsWith(to, 'semver/')) {
-            var adjExt = require('./internal/adjunctexternal');
-            to = adjExt.bundleFor(exports, from, to.substring('semver/'.length));
-        } else if (to === bundle.getModuleQName()) {
+        if (moduleMapping.to === bundle.getModuleQName()) {
             // Do not add mappings to itself.
             return bundle;
         }
-
-        // special case because we are externalizing handlebars runtime for handlebarsify.
-        if (from === 'handlebars' && to === 'handlebars:handlebars3' && !config.require) {
-            config.require = 'jenkins-handlebars-rt/runtimes/handlebars3_rt';
-        }
-
-        bundle.moduleMappings.push({
-            from: from,
-            to: to,
-            config: config
-        });
-
+        bundle.moduleMappings.push(moduleMapping);
+        return bundle;
+    };
+    
+    bundle.withExternalModuleMapping = function(from, to, config) {
+        var moduleMapping = toModuleMapping(from, to, config);
+        bundle._withExternalModuleMapping(moduleMapping);
         return bundle;
     };
 
@@ -459,7 +420,7 @@ exports.bundle = function(moduleToBundle, as) {
 
             // Add all global mappings.
             for (var i = 0; i < globalModuleMappingArgs.length; i++) {
-                bundle.withExternalModuleMapping.apply(bundle, globalModuleMappingArgs[i]);
+                bundle._withExternalModuleMapping(globalModuleMappingArgs[i]);
             }
 
             var bundleTo;
@@ -598,6 +559,59 @@ exports.bundle = function(moduleToBundle, as) {
 
     return bundle;
 };
+
+function toModuleMapping(from, to, config) {
+    dependencies.assertHasJenkinsJsModulesDependency('Cannot bundle "withExternalModuleMapping".');
+    
+    // 'to' is optional, so maybe the second arg is a 
+    // config object. 
+    if (to && typeof to === 'object') {
+        config = to;
+        to = undefined;
+    }
+
+    if (config === undefined) {
+        config = {};
+    } else if (typeof config === 'string') {
+        // config is the require mapping override (backward compatibility).
+        config = {
+            require: config
+        };
+    } else {
+        // Clone the config object because we're going to be
+        // making changes to it.
+        config = JSON.parse(JSON.stringify(config));
+    }
+
+    if (!from) {
+        var message = "Cannot call 'withExternalModuleMapping' without defining the 'from' module name.";
+        logger.logError(message);
+        throw message;
+    }
+    if (!to) {
+        // The default semver "scope" will be the minor version i.e.
+        // so long as the major and minor versions are compatible, then
+        // we're good e.g. A-3.3.1 and A-3.3.9 are considered compatible as
+        // both will be registered as A-3.3.x. 
+        to = 'semver/minor';
+    }
+
+    if (_string.startsWith(to, 'semver/')) {
+        var adjExt = require('./internal/adjunctexternal');
+        to = adjExt.bundleFor(exports, from, to.substring('semver/'.length));
+    }
+
+    // special case because we are externalizing handlebars runtime for handlebarsify.
+    if (from === 'handlebars' && to === 'handlebars:handlebars3' && !config.require) {
+        config.require = 'jenkins-handlebars-rt/runtimes/handlebars3_rt';
+    }
+
+    return {
+        from: from,
+        to: to,
+        config: config
+    };
+}
 
 function buildSrcWatchList(includeTestSrc) {
     var watchList = [];
