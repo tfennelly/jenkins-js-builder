@@ -706,6 +706,7 @@ var tasks = {
 
 function addModuleMappingTransforms(bundle, bundler) {
     var moduleMappings = bundle.moduleMappings;
+    var requiredModuleMappings = [];
 
     if (moduleMappings.length > 0) {
         var requireTransform = transformTools.makeRequireTransform("requireTransform",
@@ -718,6 +719,9 @@ function addModuleMappingTransforms(bundle, bundler) {
                         if (mapping.config.require) {
                             return cb(null, "require('" + mapping.config.require + "')");
                         } else {
+                            if (requiredModuleMappings.indexOf(mapping.to) === -1) {
+                                requiredModuleMappings.push(mapping.to);
+                            }
                             return cb(null, "require('@jenkins-cd/js-modules').require('" + mapping.to + "')");
                         }
                     }
@@ -731,15 +735,6 @@ function addModuleMappingTransforms(bundle, bundler) {
         function (content, opts, done) {
             if (!importExportApplied) {
                 try {
-                    var imports = "";
-                    for (var i = 0; i < moduleMappings.length; i++) {
-                        var mapping = moduleMappings[i];
-                        if (imports.length > 0) {
-                            imports += ", ";
-                        }
-                        imports += "'" + mapping.to + "'";
-                    }
-
                     var exportNamespace = 'undefined'; // global namespace
                     var exportModule = '{}'; // exporting nothing (an "empty" module object)
 
@@ -760,39 +755,39 @@ function addModuleMappingTransforms(bundle, bundler) {
                             "\t\trequire('@jenkins-cd/js-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
                     }
 
-                    if (imports.length > 0) {
-                        var wrappedContent =
-                            "require('@jenkins-cd/js-modules').whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" +
-                            "require('@jenkins-cd/js-modules')\n" +
-                                "    .import(" + imports + ")\n" +
-                                "    .onFulfilled(function() {\n" +
-                                "\n" +
-                                content +
-                                "\n" +
-                                "    });\n\n";
-                        
-                        // perform addModuleCSSToPage actions for mappings that requested it.
-                        // We don't need the imports to complete before adding these. We can just add
-                        // them immediately.
-                        var jsmodules = require('@jenkins-cd/js-modules/js/internal');
-                        for (var i = 0; i < moduleMappings.length; i++) {
-                            var mapping = moduleMappings[i];
-                            var addDefaultCSS = mapping.config.addDefaultCSS;
-                            if (addDefaultCSS && addDefaultCSS === true) {
-                                var parsedModuleQName = jsmodules.parseResourceQName(mapping.to);
-                                wrappedContent +=
-                                    "require('@jenkins-cd/js-modules').addModuleCSSToPage('" + parsedModuleQName.namespace + "', '" + parsedModuleQName.moduleName + "');\n";
-                            }
+                    var wrappedContent =
+                        "var ___$$$___jsModules = require('@jenkins-cd/js-modules');\n\n" +
+                        "___$$$___jsModules.whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" +
+                        "function ___$$$___exec() {\n" +
+                            content +
+                        "};\n" +
+                        "\n" +
+                        "if (___$$$___requiredModuleMappings.length > 0) {\n" +
+                        "    ___$$$___jsModules.import.apply(___$$$___jsModules.import, ___$$$___requiredModuleMappings)\n" +
+                        "        .onFulfilled(function() {\n" +
+                        "\n" +
+                        "        ___$$$___exec();\n" +
+                        "\n" +
+                        "    });\n\n" +
+                        "} else {\n\n" +
+                        "    ___$$$___exec();\n\n" +
+                        "}";
+                    
+                    // perform addModuleCSSToPage actions for mappings that requested it.
+                    // We don't need the imports to complete before adding these. We can just add
+                    // them immediately.
+                    var jsmodules = require('@jenkins-cd/js-modules/js/internal');
+                    for (var i = 0; i < moduleMappings.length; i++) {
+                        var mapping = moduleMappings[i];
+                        var addDefaultCSS = mapping.config.addDefaultCSS;
+                        if (addDefaultCSS && addDefaultCSS === true) {
+                            var parsedModuleQName = jsmodules.parseResourceQName(mapping.to);
+                            wrappedContent +=
+                                "require('@jenkins-cd/js-modules').addModuleCSSToPage('" + parsedModuleQName.namespace + "', '" + parsedModuleQName.moduleName + "');\n";
                         }
-
-                        return done(null, wrappedContent);
-                    } else {
-                        if(hasJenkinsJsModulesDependency) {
-                            // Call whoami for "this" bundle. Helps '@jenkins-cd/js-modules' figure out the bundle nsProvider etc.
-                            content = "require('@jenkins-cd/js-modules').whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" + content;
-                        }
-                        return done(null, content);
                     }
+
+                    return done(null, wrappedContent);
                 } finally {
                     importExportApplied = true;
                 }
@@ -802,6 +797,15 @@ function addModuleMappingTransforms(bundle, bundler) {
         });
 
     bundler.transform(importExportTransform);
+
+    var through = require('through2');
+    bundler.pipeline.get('deps').push(through.obj(function (row, enc, next) {
+        if (row.entry) {
+            row.source = "var ___$$$___requiredModuleMappings = " + JSON.stringify(requiredModuleMappings) + ";\n\n" + row.source;
+        }
+        this.push(row);
+        next();
+    }));
 }
 
 function less(src, targetDir) {
