@@ -19,9 +19,8 @@ describe("index.js", function () {
             
             // Make sure all the scripts were loaded as expected.
             expect(browser.success).toBe(true);
-            expect(jsLoads.length).toBe(2);
+            expect(jsLoads.length).toBe(1);
             expect(jsLoads[0]).toBe('http://localhost:18999/target/testmodule/testmodule_1.js');
-            expect(jsLoads[1]).toBe('http://localhost:18999/target/classes/org/jenkins/ui/jsmodules/abcxyz/abcxyzV2.js');
             
             // Make sure the bundle executed...
             expect(browser.window.testmoduleXYZ).toBe('Hello');
@@ -47,10 +46,9 @@ describe("index.js", function () {
             
             // Make sure all the scripts were loaded as expected.
             expect(browser.success).toBe(true);
-            expect(jsLoads.length).toBe(3);
+            expect(jsLoads.length).toBe(2);
             expect(jsLoads[0]).toBe('http://localhost:18999/target/testmodule/testmodule_2.js');
             expect(jsLoads[1]).toBe('http://localhost:18999/target/classes/org/jenkins/ui/jsmodules/underscore.string/underscore.string-3.3.x.js'); // loading of the dependency
-            expect(jsLoads[2]).toBe('http://localhost:18999/target/classes/org/jenkins/ui/jsmodules/abcxyz/abcxyzV2.js');
 
             // Shouldn't be any css loaded
             browser.assert.elements('link', 0);
@@ -79,10 +77,9 @@ describe("index.js", function () {
             
             // Make sure all the scripts were loaded as expected.
             expect(browser.success).toBe(true);
-            expect(jsLoads.length).toBe(3);
+            expect(jsLoads.length).toBe(2);
             expect(jsLoads[0]).toBe('http://localhost:18999/target/testmodule/testmodule_3.js');
             expect(jsLoads[1]).toBe('http://localhost:18999/target/classes/org/jenkins/ui/jsmodules/underscore.string/underscore.string-3.3.x.js'); // loading of the dependency
-            expect(jsLoads[2]).toBe('http://localhost:18999/target/classes/org/jenkins/ui/jsmodules/abcxyz/abcxyzV2.js');
 
             // Should be css on page
             browser.assert.elements('link', 1);
