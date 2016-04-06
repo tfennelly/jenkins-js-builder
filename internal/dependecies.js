@@ -77,3 +77,14 @@ exports.assertHasJenkinsJsExtensionsDependency = function(message) {
         exports.exitOnMissingDependency('@jenkins-cd/js-extensions', message);
     }
 };
+
+exports.processExternalizedDependencies = function(builder) {
+    if (packageJson.jenkinscd && packageJson.jenkinscd.extDependencies) {
+        var extDependencies = packageJson.jenkinscd.extDependencies;
+        if (extDependencies.length) {
+            for (var i = 0; i < extDependencies.length; i++) {
+                builder.withExternalModuleMapping(extDependencies[i]);
+            }
+        }
+    }
+};

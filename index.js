@@ -347,6 +347,10 @@ exports.bundle = function(moduleToBundle, as) {
         }
         return bundle;
     };
+    bundle.namespace = function(toNamespace) {
+        bundle.bundleExportNamespace = toNamespace;
+        return bundle;
+    };
     bundle.export = function(toNamespace) {
         if (skipBundle) {
             return bundle;
@@ -915,3 +919,5 @@ if (args.isArgvSpecified('--h') || args.isArgvSpecified('--help')) {
     var jsextensions = require('./internal/jsextensions');
     jsextensions.processExtensionPoints(exports);
 }
+
+dependencies.processExternalizedDependencies(this);
