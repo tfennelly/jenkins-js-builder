@@ -106,9 +106,10 @@ function transformToJSX(builder) {
 
 function createBundle(builder, jsxFile) {
     builder.bundle(jsxFile)
+        .namespace(maven.getArtifactId())
         .withExternalModuleMapping('@jenkins-cd/js-extensions', 'jenkins-cd:js-extensions')
         .withExternalModuleMapping('@jenkins-cd/design-language', 'jenkins-cd:jdl')
         .withExternalModuleMapping('react', 'react:react')
         .withExternalModuleMapping('react-dom', 'react:react-dom')
-        .inDir('target/classes/io/jenkins/' + maven.getArtifactId());
+        .inDir('target/classes/org/jenkins/ui/jsmodules/' + maven.getArtifactId());
 }
