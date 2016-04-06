@@ -33,7 +33,7 @@ exports.bundleFor = function(builder, packageName, semverScope) {
     if (!fs.existsSync(cwd + '/' + inDir + '/' + jsModuleName + '.js')) {
         // We need to generate an adjunct bundle for the package.
         var bundleSrc = generateBundleSrc(packageName, jsModuleName);
-        builder.bundle(bundleSrc).inDir(inDir);
+        builder.bundle(bundleSrc).inDir(inDir).ignoreGlobalModuleMappings();
     } else {
         // The bundle has already been generated. No need to do it again.
         // For linked modules ... do an rm -rf of the target dir ... sorry :)

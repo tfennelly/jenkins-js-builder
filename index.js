@@ -274,6 +274,7 @@ exports.bundle = function(moduleToBundle, as) {
     bundle.bundleModule = moduleToBundle;
     bundle.bundleOutputFile = bundle.as + '.js';
     bundle.moduleMappings = [];
+    bundle.useGlobalModuleMappings = true;
     bundle.minifyBundle = args.isArgvSpecified('--minify');
     bundle.generateNoImportsBundle = function() {
         if (skipBundle) {
@@ -312,6 +313,10 @@ exports.bundle = function(moduleToBundle, as) {
         }
         bundle.bundleTransforms = transforms;
         return bundle;
+    };
+    
+    bundle.ignoreGlobalModuleMappings = function() {
+        bundle.useGlobalModuleMappings = false;
     };
     
     bundle._withExternalModuleMapping = function(moduleMapping) {
@@ -419,8 +424,10 @@ exports.bundle = function(moduleToBundle, as) {
             }
 
             // Add all global mappings.
-            for (var i = 0; i < globalModuleMappingArgs.length; i++) {
-                bundle._withExternalModuleMapping(globalModuleMappingArgs[i]);
+            if (bundle.useGlobalModuleMappings === true) {
+                for (var i = 0; i < globalModuleMappingArgs.length; i++) {
+                    bundle._withExternalModuleMapping(globalModuleMappingArgs[i]);
+                }
             }
 
             var bundleTo;
@@ -758,9 +765,12 @@ function addModuleMappingTransforms(bundle, bundler) {
                     var wrappedContent =
                         "var ___$$$___jsModules = require('@jenkins-cd/js-modules');\n\n" +
                         "___$$$___jsModules.whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" +
+                        "/*** Start Module Exec Function ***************************************/\n" +
                         "function ___$$$___exec() {\n" +
                             content +
+                        "\n" +
                         "};\n" +
+                        "/*** End Module Exec Function   ***************************************/\n" +
                         "\n" +
                         "if (___$$$___requiredModuleMappings.length > 0) {\n" +
                         "    ___$$$___jsModules.import.apply(___$$$___jsModules.import, ___$$$___requiredModuleMappings)\n" +
