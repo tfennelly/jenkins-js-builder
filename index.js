@@ -274,6 +274,7 @@ exports.bundle = function(moduleToBundle, as) {
     bundle.bundleModule = moduleToBundle;
     bundle.bundleOutputFile = bundle.as + '.js';
     bundle.moduleMappings = [];
+    bundle.exportEmptyModule = true;
     bundle.useGlobalModuleMappings = true;
     bundle.minifyBundle = args.isArgvSpecified('--minify');
     bundle.generateNoImportsBundle = function() {
@@ -317,6 +318,12 @@ exports.bundle = function(moduleToBundle, as) {
     
     bundle.ignoreGlobalModuleMappings = function() {
         bundle.useGlobalModuleMappings = false;
+        return bundle;
+    };
+    
+    bundle.noEmptyModuleExport = function() {
+        bundle.exportEmptyModule = false;
+        return bundle;
     };
     
     bundle._withExternalModuleMapping = function(moduleMapping) {
@@ -600,16 +607,8 @@ function toModuleMapping(from, to, config) {
         throw message;
     }
     if (!to) {
-        // The default semver "scope" will be the minor version i.e.
-        // so long as the major and minor versions are compatible, then
-        // we're good e.g. A-3.3.1 and A-3.3.9 are considered compatible as
-        // both will be registered as A-3.3.x. 
-        to = 'semver/minor';
-    }
-
-    if (_string.startsWith(to, 'semver/')) {
         var adjExt = require('./internal/adjunctexternal');
-        to = adjExt.bundleFor(exports, from, to.substring('semver/'.length));
+        to = adjExt.bundleFor(exports, from);
     }
 
     // special case because we are externalizing handlebars runtime for handlebarsify.
@@ -747,7 +746,11 @@ function addModuleMappingTransforms(bundle, bundler) {
             if (!importExportApplied) {
                 try {
                     var exportNamespace = 'undefined'; // global namespace
-                    var exportModule = '{}'; // exporting nothing (an "empty" module object)
+                    var exportModule = undefined;
+                    
+                    if (bundle.exportEmptyModule) {
+                        exportModule = '{}'; // exporting nothing (an "empty" module object)
+                    }
 
                     if (bundle.bundleExportNamespace) {
                         // It's a hpi plugin, so use it's name as the export namespace.
@@ -758,13 +761,14 @@ function addModuleMappingTransforms(bundle, bundler) {
                         exportModule = 'module'; // export the module
                     }
 
-                    if(hasJenkinsJsModulesDependency) {
+                    if(hasJenkinsJsModulesDependency && exportModule) {
                         // Always call export, even if the export function was not called on the builder instance.
                         // If the export function was not called, we export nothing (see above). In this case, it just
                         // generates an event for any modules that need to sync on the load event for the module.
                         content += "\n" +
                             "\t\trequire('@jenkins-cd/js-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
                     }
+                    content += "\n\n";
 
                     var wrappedContent =
                         "var ___$$$___jsModules = require('@jenkins-cd/js-modules');\n\n" +
@@ -775,7 +779,7 @@ function addModuleMappingTransforms(bundle, bundler) {
                         //"\n" +
                         //"   console.debug('jenkins-js-modules: JS bundle " + (bundle.bundleExportNamespace || 'nns') + ":" + bundle.as + " started.');" +
                         //"\n" +
-                        "};\n" +
+                        "}\n" +
                         "/*** End Module Exec Function   ***************************************/\n" +
                         "\n" +
                         "if (___$$$___requiredModuleMappings.length > 0) {\n" +

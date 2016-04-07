@@ -1,6 +1,6 @@
 {
   "name": "@jenkins-cd/js-builder",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "description": "Jenkins CI JavaScript Build utilities.",
   "main": "index.js",
   "scripts": {
@@ -36,9 +36,8 @@
     "minifyify": "^7.1.0",
     "node-http-server": "^3.0.5",
     "node-notifier": "^4.5.0",
-    "semver": "^5.1.0",
     "through2": "^2.0.1",
-    "underscore.string": "^3.1.1",
+    "underscore.string": "3.3.4",
     "vinyl-source-stream": "^1.1.0",
     "window-handle": "0.0.6",
     "xml2js": "^0.4.9"
