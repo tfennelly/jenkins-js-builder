@@ -52,9 +52,7 @@ exports.paths = paths;
 exports.dependencies = dependencies;
 exports.maven = maven;
 
-var langConfig = {
-    ecmaVersion: 6
-};
+var langConfig = require('./internal/langConfig');
 var lintConfig = {
     level: 'configured',
     src: true,
@@ -143,7 +141,7 @@ exports.defineTasks = function(tasknames) {
     }
 
     if (defaults.length > 0) {
-        logger.logInfo('Setting defaults');
+        logger.logInfo('Defining default tasks...');
         gulp.task('default', defaults);
     }
 };
