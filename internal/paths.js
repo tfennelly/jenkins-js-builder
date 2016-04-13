@@ -3,6 +3,7 @@ var maven = require('./maven');
 var path = require('path');
 var fs = require('fs');
 var cwd = process.cwd();
+var _string = require('underscore.string');
 
 if (maven.isMavenProject) {
     exports.srcPaths = ['src/main/js','src/main/less'];
@@ -85,6 +86,10 @@ exports.hasSourceFiles = function(ext) {
     };
 
     function _hasFiles(path) {
+        if (!_string.endsWith(path, '/')) {
+            path += '/';
+        }
+        
         var files = glob.sync(path + "**/*." + ext, options);
         hasFiles = (files && files.length > 0);
     }
