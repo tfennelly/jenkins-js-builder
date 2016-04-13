@@ -744,7 +744,7 @@ function addModuleMappingTransforms(bundle, bundler) {
             if (!importExportApplied) {
                 try {
                     if(!hasJenkinsJsModulesDependency) {
-                        throw "This module must have a dependency on the '@jenkins-cd/js-modules' package. Pleas run 'npm install --save @jenkins-cd/js-modules'.";
+                        throw "This module must have a dependency on the '@jenkins-cd/js-modules' package. Please run 'npm install --save @jenkins-cd/js-modules'.";
                     }
                     
                     var exportNamespace = 'undefined'; // global namespace
