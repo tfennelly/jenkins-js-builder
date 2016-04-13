@@ -15,7 +15,7 @@ var dependencies = require('./internal/dependecies');
 var maven = require('./internal/maven');
 var testWebServer;
 var globalModuleMappingArgs = [];
-var skipBundle = args.isArgvSpecified('--skipBundle');
+var skipBundle = skipBundle();
 var skipTest = (args.isArgvSpecified('--skipTest') || args.isArgvSpecified('--skipTests'));
 
 var cwd = process.cwd();
@@ -711,6 +711,15 @@ var tasks = {
         require('./internal/lint').exec(langConfig, lintConfig);
     }
 };
+
+function skipBundle() {
+    // Can't skip bundle if there are handlebars file and a dependency on hbsify
+    if (dependencies.getDependency('hbsfy') && paths.hasSourceFiles('hbs')) {
+        return false;
+    }
+    
+    return args.isArgvSpecified('--skipBundle');
+}
 
 function addModuleMappingTransforms(bundle, bundler) {
     var moduleMappings = bundle.moduleMappings;
