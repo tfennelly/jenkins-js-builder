@@ -3,7 +3,7 @@ var builder = require('./index.js');
 // TODO: come back and clean this up. Enable jshint etc.
 builder.lint('none');
 
-builder.src('./internal');
+builder.src(['./internal', './js']);
 
 // Create a mock bundle for abcxyz:abcxyzV2. We then use
 // this for testing the global withExternalModuleMapping
