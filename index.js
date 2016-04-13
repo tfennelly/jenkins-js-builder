@@ -743,6 +743,10 @@ function addModuleMappingTransforms(bundle, bundler) {
         function (content, opts, done) {
             if (!importExportApplied) {
                 try {
+                    if(!hasJenkinsJsModulesDependency) {
+                        throw "This module must have a dependency on the '@jenkins-cd/js-modules' package. Pleas run 'npm install --save @jenkins-cd/js-modules'.";
+                    }
+                    
                     var exportNamespace = 'undefined'; // global namespace
                     var exportModule = undefined;
                     
@@ -759,7 +763,7 @@ function addModuleMappingTransforms(bundle, bundler) {
                         exportModule = 'module'; // export the module
                     }
 
-                    if(hasJenkinsJsModulesDependency && exportModule) {
+                    if(exportModule) {
                         // Always call export, even if the export function was not called on the builder instance.
                         // If the export function was not called, we export nothing (see above). In this case, it just
                         // generates an event for any modules that need to sync on the load event for the module.
