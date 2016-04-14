@@ -70,10 +70,30 @@ Add a `gulpfile.js` (see [Gulp]) in the same folder as the `package.json`. Then 
 ```javascript
 var builder = require('@jenkins-cd/js-builder');
 
-builder.bundle('./index.js', 'myappbundle.js')
-    .inDir('target/classes/org/jenkins/myapp/ui');
+builder.bundle('./src/main/js/myappbundle.js');
 
 ```
+
+After running the the `gulp` command from the command line, you will see an output something like the following.
+  
+```
+[17:16:33] Javascript bundle "myappbundle" will be available in Jenkins as adjunct "org.jenkins.ui.jsmodules.myappbundle".
+```
+
+Or if run from a maven project where the `artifactId` is (e.g.) `jenkins-xyz-plugin`.
+
+```
+[17:16:33] Javascript bundle "myappbundle" will be available in Jenkins as adjunct "org.jenkins.ui.jsmodules.jenkins_xyz_plugin.myappbundle".
+```
+
+From this, you can deduce that the easiest way of using this JavaScript bundle in Jenkins is via the `<st:adjunct>` jelly tag.
+
+```xml
+<st:adjunct includes="org.jenkins.ui.jsmodules.jenkins_xyz_plugin.myappbundle"/>
+```
+
+The best place to learn how to use this utility as part of building Jenkins plugins is to see the 
+[Sample Plugins](https://github.com/jenkinsci/js-samples) repository.
 
 # Predefined Gulp Tasks
 
@@ -156,123 +176,24 @@ builder.defineTask('test', function() {
 });
 ```
 
-# Bundling
-As stated in the "Features" section above, much of the usefulness of `js-builder` lies in how it
-helps with the bundling of the different JavaScript and CSS components:
+# Bundling Options
 
-1. Bundling [CommonJS] modules to produce a JavaScript [bundle]. 
-1. Bundling [LESS] resource to produce a `.css` file. 
-1. Bundling [Handlebars] templates (`hbs`) into the JavaScript [bundle].
- 
-It also helps with __[js-modules]__ compatibility i.e. handling `import`s and `export`s so as to allow
-slimming down of your "app" [bundle].
+The following sections outline some options that can be specified on a `bundle` instance.
 
-## Step 1: Create Bundle Spec
-Most of the bundling options are configured on the "Bundle Spec", which is an object returned from
-a call to the `bundle` function on the `builder`:
+## Generating a bundle to a specific directory
 
-```javascript
-var bundleSpec = builder.bundle('<path-to-main-module>', '<bundle-name>');
-```
+By default, the bundle command will output the bundle to the `target/classes/org/jenkins/ui/jsmodules`, making
+the bundle loadable in Jenkins as an adjunct. See the <a href="#general-usage">General Usage</a> section earlier
+in this document.
 
-* `path-to-main-module`: The path to the "main" [CommonJS] module, from which [Browserify] will start the bundling process (see [Browserify] for more details). E.g. `'js/bootstrap3.js'`.  
-* `bundle-name` __(Optional)__: The name of the bundle to be generated. If not specified, the "main" module name will be used.  
-
-## Step 2: Specify Bundle Output Location
-`js-builder` lets you configure where the generated [bundle] is output to via the `inDir` function.
+Outputting the generated bundle to somewhere else is just a matter of specifying it on the `bundle` instance
+via the `inDir` function e.g.
 
 ```javascript
 bundleSpec.inDir('<path-to-dir>');
 ```
 
-## Step 3 (Optional): Specify LESS Processing
-Specify a [LESS] file for pre-processing to CSS:
-
-```javascript
-bundleSpec.less('js/bootstrap3/style.less');
-```
-
-The output location for the generated `.css` file depends on the output location chosen for the [bundle]. See __Step 2__ above.  
-
-## Step 4 (Optional): Specify "external" Module Mappings (imports)
-Some of the [NPM] packages used by your "app" [bundle] will be common [Framework lib]s that, for performance reasons,
-you do not want bundled in every "app" [bundle]. Instead, you would prefer all "app" bundles to share an instance of
-these common [Framework lib]s.
-
-That said, you would generally prefer to code your application's [CommonJS] modules as normal, using the more 
-simple/intuitive [CommonJS] style `require` syntax (synch), and forget about performance optimizations until
-later (build time). When doing it this way, your [CommonJS] module code should just `require` the [NPM] packages it
-needs and just use them as normal e.g.
-
-```javascript
-var moment = require('moment');
-
-moment().format('MMMM Do YYYY, h:mm:ss a');
-```
-    
-The above code will work fine as is (without performing any mappings), but the downside is that your app bundle will be more bloated as it will
-include the `moment` NPM module. To lighten your bundle for the browser (by using a shared instance of the `moment`
-NPM module), we tell the `builder` (via the `bundleSpec`) to "map" (transform) all synchronous `require` calls for `moment` to async 
-`import`<sub>s</sub> of the `momentjs:momentjs2` [Framework lib] [bundle]
-([see the momentjs framwork lib bundle](https://github.com/jenkinsci/js-libs/tree/master/momentjs)).
-
-```javascript
-bundleSpec.withExternalModuleMapping('moment', 'momentjs:momentjs2');
-```
-
-Of course your "app" bundle may depend on a number of weighty [Framework lib]s that you would prefer not to
-include in your bundle. If so, simply call `withExternalModuleMapping` for each.
-
-> Note that you can apply global mappings by calling `withExternalModuleMapping` on the top level `builder` instance. This is useful if you are creating multiple bundles, many/all of which are using the same external module mappings.
-
-### Step 4.1 (Optional): Generating a "no_imports" bundle
-
-Externalizing commons [Framework lib]s (<a href="#step-4-optional-specify-external-module-mappings-imports">see Step 4</a>)
-is important in terms of producing a JavaScript [bundle] that can be used in production (is lighter etc), but can make
-things a bit trickier when it comes to Integration Testing your bundle because your test (and test environment) will now need to
-accommodate the fact that your bundle no longer contains all the [Framework lib]s it depends on.
-
-For that reason, `js-builder` supports the `generateNoImportsBundle` option, which tells the builder to also generate
-a [bundle] that includes all of it's dependency [Framework lib]s i.e. a [bundle] which does not apply imports (hence "no_imports").
-
-```javascript
-bundleSpec.generateNoImportsBundle();
-```
-
-> Note that this is an additional [bundle] i.e. not instead of the "main" bundle (in which "imports" are applied).
-
-With this option set, the "no_imports" bundle is generated into a sub-folder named "no_imports", inside the same
-folder in which the "main" bundle is generated.
-
-> For an example of how to use the `generateNoImportsBundle` option, see the <a href="https://github.com/jenkinsci/js-samples/tree/master/step-08-zombie-tests">"step-08-zombie-tests" Integration Test sample plugin</a>.
-
-## Step 5 (Optional): Export
-Exporting the "main" module (allowing other bundle modules to `import` it) from the [bundle] is easy:
-
-```javascript
-bundleSpec.export();
-```
-The `builder` will use the plugin's `artifactId` from the `pom.xml` (which becomes the plugin ID), as well as the
-bundle name (normalised from the bundle name specified during __Step 1__) to determine the `export` bundle ID for
-the module.
-
-For example, if the plugin's `artifactId` is "acmeplugin" and the bundle name specified is "acme.js", then the
-module would be exported as `acmeplugin:acme`. The package associated with the "acme.js" module should also be
-"published" to [NPM] so as to allow "app" bundles that might use it to add a `dev` dependency on it (so tests
-etc can run). 
-
-So how would an "app" bundle in another plugin use this later?
-
-It would need to:
-
-1. Add a normal HPI dependency on "acmeplugin" (to make sure it gets loaded by Jenkins so it can serve the bundle).
-1. Add a `dev` dependency on the package associated with the "acme.js" module i.e. `npm install --save-dev acme`. This allows the next step will work (and tests to run etc).
-1. In the "app" bundle modules, simply `require` and use the `acme` module e.g. `var acme = require('acme');`.
-1. In the "app" bundle's `gulpfile.js`, add a `withExternalModuleMapping` e.g. `bundleSpec.withExternalModuleMapping('acme', 'acmeplugin:acme');`.
-  
-See __Step 4__ above.  
-
-## Step 6 (Optional): Minify bundle JavaScript
+## Minify bundle JavaScript
 
 This can be done by calling `minify` on `js-builder`:
 

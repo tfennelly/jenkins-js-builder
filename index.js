@@ -608,9 +608,11 @@ function bundleCss(resource, format) {
 }
 
 function setAdjunctInDir(bundle) {
-    var adjunctBase = 'org/jenkins/ui/jsmodules/' + bundle.as;
+    var adjunctBase = 'org/jenkins/ui/jsmodules';
     if (bundle.bundleExportNamespace) {
-        adjunctBase = 'org/jenkins/ui/jsmodules/' + bundle.bundleExportNamespace;
+        adjunctBase += '/' + bundle.bundleExportNamespace.replace(/\W/g, '_');
+    } else if (maven.isMavenProject) {
+        adjunctBase += '/' + maven.getArtifactId().replace(/[^\W]/g, '_');
     }
     bundle.bundleInDir = 'target/classes/' + adjunctBase;
     return _string.replaceAll(adjunctBase, '/', '\.');
