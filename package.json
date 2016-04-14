@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@jenkins-cd/eslint-config-jenkins": "0.0.2",
-    "@jenkins-cd/js-modules": "0.0.2",
+    "@jenkins-cd/js-modules": "0.0.4",
     "babel-preset-es2015": "^6.5.0",
     "babelify": "^7.x",
     "brfs": "^1.4.3",
