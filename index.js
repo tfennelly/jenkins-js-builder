@@ -435,7 +435,8 @@ function bundleJs(moduleToBundle, as) {
 
         exports.defineTask(bundleTaskName, function() {
             if (!bundle.bundleInDir) {
-                setAdjunctInDir(bundle);
+                var adjunctBase = setAdjunctInDir(bundle);
+                logger.logInfo('Javascript bundle "' + bundle.as + '" will be available in Jenkins as adjunct "' + adjunctBase + '.' + bundle.as + '".')
             }
 
             // Add all global mappings.
