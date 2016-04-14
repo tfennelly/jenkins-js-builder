@@ -48,10 +48,7 @@ The responsibilities of the components in the above diagram can be summarized as
 
 1. Runs [Jasmine] tests/specs and produce a JUnit report that can be picked up by a top level Maven build.
 1. Uses [Browserify] to produce a [CommonJS] module __[bundle]__ file from a "main" [CommonJS] module (see the `bundle` task below). The [bundle] file is typically placed somewhere on the filesystem that allows a higher level Maven build to pick it up and include it in e.g. a Jenkins plugin HPI file (so it can be loaded by the browser at runtime). 
-1. Pre-process [Handlebars] files (`.hbs`) and include them in the __[bundle]__ file (see 2 above).
-1. __Optionally__ pre-process a [LESS] fileset to a `.css` file that can be picked up by the top level Maven build and included in the e.g. a Jenkins plugin HPI file. See the `bundle` task below.
-1. __Optionally__ perform module transformations (using a [Browserify Transform](https://github.com/substack/browserify-handbook#transforms)) that "link" in [Framework lib]s (`import` - see [js-modules]), making the [bundle] a lot lighter by allowing it to use a shared instance of the [Framework lib] Vs it being included in the [bundle]. This can easily reduce the size of a [bundle] from e.g. 1Mb to 50Kb or less, as [Framework lib]s are often the most weighty components. See the `bundle` task below.
-1. __Optionally__ `export` (see [js-modules]) the [bundle]s "main" [CommonJS] module (see 2 above) so as to allow other [bundle]s `import` it i.e. effectively making the bundle a [Framework lib] (see 5 above). See the `bundle` task below.
+1. Pre-process a [LESS] fileset to a `.css` file that can be picked up by the top level Maven build and included in the e.g. a Jenkins plugin HPI file. See the Bundling Options section below.
 
 # Install
 
@@ -179,6 +176,28 @@ builder.defineTask('test', function() {
 # Bundling Options
 
 The following sections outline some options that can be specified on a `bundle` instance.
+
+## Bundling CSS and LESS
+
+Note that bundling of __CSS__ or __LESS__ is also supported through a similar syntax e.g.
+
+```javascript
+builder.bundle('src/main/css/bootstrap336/bootstrap.css');
+```
+
+Or via [LESS]:
+
+```javascript
+builder.bundle('src/main/css/bootstrap336/bootstrap_tweaked.less');
+```
+
+The above commands will add all resources under `src/main/css/bootstrap336` to the plugin classpath, making
+them available as adjuncts e.g. using the bundled `bootstrap.css` referenced above would be as simple as
+adding the following to the relevant `.jelly` file (check the build output for the correct adjunct):
+
+```xml
+<st:adjunct includes="org.jenkins.ui.jsmodules.bootstrap336.bootstrap"/>
+```
 
 ## Generating a bundle to a specific directory
 
