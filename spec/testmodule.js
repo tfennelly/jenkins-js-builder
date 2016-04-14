@@ -1,4 +1,5 @@
-var testTemplate = require("../js/test.hbs");
+var handlebars = require('handlebars');
+var testTemplate = handlebars.compile(require('fs').readFileSync(__dirname + '/../js/test.hbs', 'utf8'));
 var helloContent = testTemplate({message: 'Hello World'});
 
 // ES6 code ...

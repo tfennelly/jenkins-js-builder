@@ -24,9 +24,6 @@ var hasJenkinsJsModulesDependency = dependencies.hasJenkinsJsModulesDep();
 var bundles = []; // see exports.bundle function
 var bundleDependencyTaskNames = ['log-env'];
 
-var adjunctBasePath = './target/generated-adjuncts/';
-var jsmodulesBasePath = './src/main/webapp/jsmodules/';
-
 var rebundleRunning = false;
 var retestRunning = false;
 
@@ -507,24 +504,6 @@ function bundleJs(moduleToBundle, as) {
                 bundler.transform(babelify, {presets: presets});
             }
 
-            if (paths.hasSourceFiles('hbs')) {
-                var hbsfy = require("hbsfy");
-                if (applyImports && bundle.findModuleMapping('handlebars')) {
-                    // If there's a module mapping for handlebars, then configure handlebarsify to use
-                    // jenkins-handlebars-rt/runtimes/handlebars3_rt. This is a js-modules compatible
-                    // module "import" version of handlebars, which helps with 2 things:
-                    // 1. It stops browserify from bundling the full handlebars package, importing it at runtime
-                    //    instead and therefore making the final bundle lighter.
-                    // 2. It guarantees that the instance of Handlebars used by the handlebarsify'd templates is
-                    //    the same as that used by other modules e.g. where helpers are registered. This is one of
-                    //    the big PITA things about using handlebars with browserify.
-                    hbsfy = hbsfy.configure({
-                        compiler: "require('jenkins-handlebars-rt/runtimes/handlebars3_rt')"
-                    });
-                }
-                bundler.transform(hbsfy);
-            }
-
             if (bundle.bundleTransforms) {
                 for (var i = 0; i < bundle.bundleTransforms.length; i++) {
                     bundler.transform(bundle.bundleTransforms[i]);
@@ -546,7 +525,10 @@ function bundleJs(moduleToBundle, as) {
             for (var i = 0; i < preBundleListeners.length; i++) {
                 preBundleListeners[i].call(bundle, bundler);
             }
-
+            
+            // Allow reading of stuff from the filesystem.
+            bundler.transform('brfs');
+            
             return bundler.bundle()
                 .on('error', function (err) {
                     logger.logError('Browserify bundle processing error');
