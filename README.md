@@ -11,7 +11,7 @@ __Table of Contents__:
     <a href="#general-usage">General Usage</a><br/>
     <a href="#predefined-gulp-tasks">Predefined Gulp Tasks</a><br/>
     <a href="#redefining-one-of-the-predefined-gulp-tasks">Redefining one of the predefined Gulp tasks</a><br/>
-    <a href="#bundling">Bundling</a><br/>
+    <a href="#bundling-options">Bundling Options</a><br/>    
     <a href="#setting-src-and-test-spec-paths">Setting 'src' and 'test' (spec) paths</a><br/>
     <a href="#command-line-options">Command line options</a><br/>
     <a href="#maven-integration">Maven Integration</a><br/>
