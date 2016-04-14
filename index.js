@@ -244,7 +244,17 @@ function packageToPath(packageName) {
     return _string.replaceAll(packageName, '\\.', '/');
 }
 
-exports.bundle = function(moduleToBundle, as) {
+exports.bundle = function(resource, as) {
+    if (_string.endsWith(resource, '.css')) {
+        return bundleCss(resource, 'css', as);
+    } if (_string.endsWith(resource, '.less')) {
+        return bundleCss(resource, 'less', as);
+    } else {
+        return bundleJs(resource, as);
+    }
+};
+
+function bundleJs(moduleToBundle, as) {
     if (!moduleToBundle) {
         gutil.log(gutil.colors.red("Error: Invalid bundle registration for module 'moduleToBundle' must be specify."));
         throw "'bundle' registration failed. See error above.";
@@ -427,9 +437,8 @@ exports.bundle = function(moduleToBundle, as) {
         bundleDependencyTaskNames.push(bundleTaskName);
 
         exports.defineTask(bundleTaskName, function() {
-            if (!bundle.bundleToAdjunctPackageDir && !bundle.bundleAsJenkinsModule && !bundle.bundleInDir) {
-                logger.logError("Error: Cannot perform 'bundle' task. No bundle output spec defined. You must call 'inAdjunctPackage([adjunct-package-name])' or 'asJenkinsModuleResource' or 'inDir([dir])' on the response return from the call to 'bundle'.");
-                throw "'bundle' task failed. See error above.";
+            if (!bundle.bundleInDir) {
+                setAdjunctInDir(bundle);
             }
 
             // Add all global mappings.
@@ -439,14 +448,7 @@ exports.bundle = function(moduleToBundle, as) {
                 }
             }
 
-            var bundleTo;
-            if (bundle.bundleAsJenkinsModule) {
-                bundleTo = jsmodulesBasePath;
-            } else if (bundle.bundleInDir) {
-                bundleTo = bundle.bundleInDir;
-            } else {
-                bundleTo = adjunctBasePath + "/" + bundle.bundleToAdjunctPackageDir;
-            }
+            var bundleTo = bundle.bundleInDir;
 
             if (!applyImports) {
                 bundleTo += '/no_imports';
@@ -457,11 +459,7 @@ exports.bundle = function(moduleToBundle, as) {
             if (applyImports && bundle.lessSrcPath) {
                 var lessBundleTo = bundleTo;
 
-                if (bundle.bundleAsJenkinsModule) {
-                    // If it's a jenkins module, the CSS etc need to go into a folder under jsmodulesBasePath
-                    // and the name of the folder must be the module name
-                    lessBundleTo += bundle.as;
-                } else if (bundle.lessTargetDir) {
+                if (bundle.lessTargetDir) {
                     lessBundleTo = bundle.lessTargetDir;
                 }
 
@@ -576,7 +574,64 @@ exports.bundle = function(moduleToBundle, as) {
     exports.defineTask('bundle', tasks.bundle);
 
     return bundle;
-};
+}
+
+function bundleCss(resource, format) {
+    var bundle = {
+        format: format
+    };
+
+    var folder = paths.parentDir(resource);
+
+    bundle.fileExtension = '.' + format;
+    bundle.shortName = _string.strRightBack(resource, '/');
+    bundle.as = _string.strLeftBack(bundle.shortName, bundle.fileExtension);
+    bundle.bundleExportNamespace = _string.strRightBack(folder, '/');
+
+    bundle.inDir = function(dir) {
+        if (skipBundle) {
+            return bundle;
+        }
+        if (!dir) {
+            logger.logError("Error: Invalid bundle registration for CSS resource '" + resource + "'. You can't specify a 'null' dir name when calling inDir.");
+            throw "'bundle' registration failed. See error above.";
+        }
+        bundle.bundleInDir = normalizePath(dir);
+        return bundle;
+    };
+    
+    var bundleTaskName = 'bundle_' + format + '_' + bundle.as;
+    bundleDependencyTaskNames.push(bundleTaskName);
+    exports.defineTask(bundleTaskName, function() {
+        var ncp = require('ncp').ncp;
+
+        if (!bundle.bundleInDir) {
+            var adjunctBase = setAdjunctInDir(bundle);
+            logger.logInfo('CSS resource "' + resource + '" will be available in Jenkins as adjunct "' + adjunctBase + '.' + bundle.as + '".')
+        }
+        
+        paths.mkdirp(bundle.bundleInDir);
+        ncp(folder, bundle.bundleInDir, function (err) {
+            if (err) {
+                return logger.logError(err);
+            }
+            if (bundle.format === 'less') {
+                less(resource, bundle.bundleInDir);
+            }
+        });
+    });
+    
+    return bundle;
+}
+
+function setAdjunctInDir(bundle) {
+    var adjunctBase = 'org/jenkins/ui/jsmodules/' + bundle.as;
+    if (bundle.bundleExportNamespace) {
+        adjunctBase = 'org/jenkins/ui/jsmodules/' + bundle.bundleExportNamespace;
+    }
+    bundle.bundleInDir = 'target/classes/' + adjunctBase;
+    return _string.replaceAll(adjunctBase, '/', '\.');
+}
 
 function toModuleMapping(from, to, config) {
     dependencies.assertHasJenkinsJsModulesDependency('Cannot bundle "withExternalModuleMapping".');

@@ -7,9 +7,7 @@ builder.src(['./internal', './js']);
 
 // Create a mock bundle for abcxyz:abcxyzV2. We then use
 // this for testing the global withExternalModuleMapping
-builder.bundle('spec/abcxyzV2.js', 'abcxyzV2')
-    .inDir('target/classes/org/jenkins/ui/jsmodules/abcxyz')
-    .export('abcxyz');
+builder.bundle('spec/abcxyzV2.js', 'abcxyzV2').export('abcxyz');
 
 builder.withExternalModuleMapping('abcxyz', 'abcxyz:abcxyzV2');
 
@@ -32,3 +30,7 @@ builder.bundle('spec/testmodule.js', 'testmodule_3')
     .withExternalModuleMapping('underscore.string', {addDefaultCSS: true})
     .inDir('target/testmodule')
     .generateNoImportsBundle();
+
+// Let's bundle some CSS ...
+builder.bundle('spec/frameworkx/style.css');
+builder.bundle('spec/frameworky/style.less');
