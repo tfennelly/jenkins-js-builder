@@ -528,7 +528,7 @@ function bundleJs(moduleToBundle, as) {
             }
             
             // Allow reading of stuff from the filesystem.
-            bundler.transform('brfs');
+            bundler.transform(require('brfs'));
             
             return bundler.bundle()
                 .on('error', function (err) {
