@@ -610,12 +610,17 @@ function bundleCss(resource, format) {
 function setAdjunctInDir(bundle) {
     var adjunctBase = 'org/jenkins/ui/jsmodules';
     if (bundle.bundleExportNamespace) {
-        adjunctBase += '/' + bundle.bundleExportNamespace.replace(/\W/g, '_');
+        adjunctBase += '/' + normalizeForJavaIdentifier(bundle.bundleExportNamespace);
     } else if (maven.isMavenProject) {
-        adjunctBase += '/' + maven.getArtifactId().replace(/[^\W]/g, '_');
+        adjunctBase += '/' + normalizeForJavaIdentifier(maven.getArtifactId());
     }
     bundle.bundleInDir = 'target/classes/' + adjunctBase;
     return _string.replaceAll(adjunctBase, '/', '\.');
+}
+
+function normalizeForJavaIdentifier(string) {
+    // Replace all non alphanumerics with an underscore.
+    return string.replace(/\W/g, '_');
 }
 
 function toModuleMapping(from, to, config) {
