@@ -601,6 +601,13 @@ function bundleCss(resource, format) {
             if (bundle.format === 'less') {
                 less(resource, bundle.bundleInDir);
             }
+            // Add a .adjunct marker file in each of the subdirs
+            paths.walkDirs(bundle.bundleInDir, function(dir) {
+                var dotAdjunct = dir + '/.adjunct';
+                if (!fs.existsSync(dotAdjunct)) {
+                    fs.writeFileSync(dotAdjunct, '');
+                }
+            });
         });
     });
     
