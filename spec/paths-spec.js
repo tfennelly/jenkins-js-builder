@@ -33,4 +33,12 @@ describe("paths test", function () {
         expect(paths.findClosest('package.json', __dirname)).toBeDefined();
         expect(paths.findClosest('blah-xxx-whatever-1234.xyz', __dirname)).not.toBeDefined();
     });
+    
+    it("- test walkDirs", function () {
+        var dirs = [];
+        paths.walkDirs(cwd + '/spec', function (dir) {
+            dirs.push(dir);
+        });
+        expect(dirs.length).toBe(3); // yeah, this will need to be changed if folders are added. That's fine.
+    });
 });

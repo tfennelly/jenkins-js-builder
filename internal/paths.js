@@ -128,3 +128,33 @@ exports.findClosest = function(fileName, startDir) {
     
     return undefined;
 };
+
+/**
+ * Recursively walk a directory tree.
+ * @param startDir The directory on which to start.
+ * @param callback The callback to call for each directory n the tree.
+ */
+exports.walkDirs = function(startDir, callback) {
+    walkDirs(startDir, callback);
+};
+
+function walkDirs(startDir, callback) {
+    if (!fs.existsSync(startDir)) {
+        return;
+    }
+    var stats = fs.statSync(startDir);
+    if (!stats.isDirectory()) {
+        return;
+    }
+    
+    callback(startDir);
+    
+    var files = fs.readdirSync(startDir);
+    if (files) {
+        for (var i = 0; i < files.length; i++) {
+            // Recursively call walkDirs for each.
+            // It will ignore non-directory files.
+            walkDirs(path.resolve(startDir, files[i]), callback);
+        }
+    }
+}
