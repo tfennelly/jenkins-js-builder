@@ -23,21 +23,6 @@ exports.parentDir = function(file) {
 };
 
 /**
- * Find the jenkins-js-extension.yaml file in the src paths.
- */
-exports.findExtensionsYAMLFile = function() {
-    for (var i = 0; i < exports.srcPaths.length; i++) {
-        var srcPath = path.resolve(cwd, exports.srcPaths[i]);
-        var extFile = path.resolve(srcPath, 'jenkins-js-extension.yaml');
-        if (fs.existsSync(extFile)) {
-            return extFile;
-        }
-    }
-    
-    return undefined;
-};
-
-/**
  * Get the absolute path to the javascript src root directory.
  */
 exports.getAbsoluteJSRoot = function() {
@@ -133,12 +118,15 @@ exports.findClosest = function(fileName, startDir) {
  * Recursively walk a directory tree.
  * @param startDir The directory on which to start.
  * @param callback The callback to call for each directory n the tree.
+ * @param stopAtDepth The depth at which recursion should stop. {@code undefined}
+ * or {@code -1} for infinite recursion.
  */
-exports.walkDirs = function(startDir, callback) {
-    walkDirs(startDir, callback);
+exports.walkDirs = function(startDir, callback, stopAtDepth) {
+    stopAtDepth = (stopAtDepth || -1); // -1 means no stop depth i.e. infinite
+    walkDirs(startDir, callback, stopAtDepth);
 };
 
-function walkDirs(startDir, callback) {
+function walkDirs(startDir, callback, stopAtDepth) {
     if (!fs.existsSync(startDir)) {
         return;
     }
@@ -147,14 +135,16 @@ function walkDirs(startDir, callback) {
         return;
     }
     
-    callback(startDir);
-    
-    var files = fs.readdirSync(startDir);
-    if (files) {
-        for (var i = 0; i < files.length; i++) {
-            // Recursively call walkDirs for each.
-            // It will ignore non-directory files.
-            walkDirs(path.resolve(startDir, files[i]), callback);
+    if (callback(startDir) !== false) { // Stop recursion if the callback returns false.
+        if (stopAtDepth !== 0) { // Stop recursion when stopAtDepth hits zero. stopAtDepth can be < 0, which means infinite recursion.
+            var files = fs.readdirSync(startDir);
+            if (files) {
+                for (var i = 0; i < files.length; i++) {
+                    // Recursively call walkDirs for each.
+                    // It will ignore non-directory files.
+                    walkDirs(path.resolve(startDir, files[i]), callback, (stopAtDepth - 1));
+                }
+            }
         }
     }
 }

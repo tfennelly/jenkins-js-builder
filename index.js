@@ -27,6 +27,9 @@ var bundleDependencyTaskNames = ['log-env'];
 var rebundleRunning = false;
 var retestRunning = false;
 
+// Make this builder instance globally available.
+global.__builder = exports;
+
 logger.logInfo('**********************************************************************');
 logger.logInfo('This build is using Jenkins JS Builder.');
 logger.logInfo('  For command line options and other help, go to');
@@ -48,6 +51,7 @@ exports.logger = logger;
 exports.paths = paths;
 exports.dependencies = dependencies;
 exports.maven = maven;
+exports.args = args;
 
 var langConfig = require('./internal/langConfig');
 var lintConfig = {
@@ -163,6 +167,15 @@ exports.defineTask = function(taskname, gulpTask) {
     } else {
         gulp.task(taskname, gulpTask);
     }
+};
+
+exports.defineBundleTask = function(taskname, gulpTask) {
+    var bundleTaskName = taskname + '_bundle_' + bundleDependencyTaskNames.length;
+    
+    bundleDependencyTaskNames.push(bundleTaskName);
+    exports.defineTask(bundleTaskName, gulpTask);
+    // Define the 'bundle' task again so it picks up the new dependency
+    exports.defineTask('bundle', tasks.bundle);
 };
 
 exports.src = function(newPaths) {
@@ -288,7 +301,7 @@ function bundleJs(moduleToBundle, as) {
         }
         // Create a self contained version of the bundle (no imports) - useful for
         // testing and probably more.
-        defineBundleTask(bundle, false);
+        defineJSBundleTask(bundle, false);
         return bundle;
     };
     bundle.minify = function() {
@@ -424,16 +437,14 @@ function bundleJs(moduleToBundle, as) {
     
     bundles.push(bundle);
 
-    function defineBundleTask(bundle, applyImports) {
-        var bundleTaskName = 'bundle_' + bundle.as;
+    function defineJSBundleTask(bundle, applyImports) {
+        var bundleTaskName = 'js_bundle_' + bundle.as;
 
         if (!applyImports) {
             bundleTaskName += '_no_imports';
         }
 
-        bundleDependencyTaskNames.push(bundleTaskName);
-
-        exports.defineTask(bundleTaskName, function() {
+        exports.defineBundleTask(bundleTaskName, function() {
             if (!bundle.bundleInDir) {
                 var adjunctBase = setAdjunctInDir(bundle);
                 logger.logInfo('Javascript bundle "' + bundle.as + '" will be available in Jenkins as adjunct "' + adjunctBase + '.' + bundle.as + '".')
@@ -551,10 +562,7 @@ function bundleJs(moduleToBundle, as) {
     }
 
     // Create a bundle with imports applied/transformed.
-    defineBundleTask(bundle, true);
-
-    // Define the 'bundle' task again so it picks up the new dependency
-    exports.defineTask('bundle', tasks.bundle);
+    defineJSBundleTask(bundle, true);
 
     return bundle;
 }
@@ -583,9 +591,8 @@ function bundleCss(resource, format) {
         return bundle;
     };
     
-    var bundleTaskName = 'bundle_' + format + '_' + bundle.as;
-    bundleDependencyTaskNames.push(bundleTaskName);
-    exports.defineTask(bundleTaskName, function() {
+    var bundleTaskName = format + '_bundle_' + bundle.as;
+    exports.defineBundleTask(bundleTaskName, function() {
         var ncp = require('ncp').ncp;
 
         if (!bundle.bundleInDir) {
@@ -985,8 +992,8 @@ if (args.isArgvSpecified('--h') || args.isArgvSpecified('--help')) {
     defaultTasks.push('test:watch');
     exports.defineTasks(defaultTasks);
     
-    var jsextensions = require('./internal/jsextensions');
-    jsextensions.processExtensionPoints(exports);
+    dependencies.processExternalizedDependencies(this);
+    
+    // Install plugins.
+    require('./internal/plugins').install(exports);
 }
-
-dependencies.processExternalizedDependencies(this);

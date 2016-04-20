@@ -43,10 +43,6 @@ exports.hasJenkinsJsModulesDep = function() {
     return (exports.getDependency('@jenkins-cd/js-modules') !== undefined);
 };
 
-exports.hasJenkinsJsExtensionsDep = function() {
-    return (exports.getDependency('@jenkins-cd/js-extensions') !== undefined);
-};
-
 exports.exitOnMissingDependency = function(depName, message) {
     if (!message) {
         message = 'Missing required NPM dependency.';
@@ -69,12 +65,6 @@ exports.warnOnMissingDependency = function(depName, message) {
 exports.assertHasJenkinsJsModulesDependency = function(message) {
     if(!exports.hasJenkinsJsModulesDep()) {
         exports.exitOnMissingDependency('@jenkins-cd/js-modules', message);
-    }
-};
-
-exports.assertHasJenkinsJsExtensionsDependency = function(message) {
-    if(!exports.hasJenkinsJsExtensionsDep()) {
-        exports.exitOnMissingDependency('@jenkins-cd/js-extensions', message);
     }
 };
 
