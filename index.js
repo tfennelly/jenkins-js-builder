@@ -724,8 +724,10 @@ var tasks = {
             filePrefix: 'JasmineReport'
         });
 
-        var testSpecs = paths.testSrcPath + '/**/' + args.argvValue('--test', '') + '*-spec.js';
-        logger.logInfo('Test specs: ' + testSpecs);
+        var testFileSuffix = args.argvValue('--testFileSuffix', 'spec');
+        
+        var testSpecs = paths.testSrcPath + '/**/' + args.argvValue('--test', '') + '*-' + testFileSuffix + '.js';
+        logger.logInfo('Test specs: ' + testSpecs + ' (use --testFileSuffix switch to select different files)');
 
         global.jenkinsBuilder = exports;
         _startTestWebServer();
