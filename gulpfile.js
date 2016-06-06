@@ -34,3 +34,8 @@ builder.bundle('spec/testmodule.js', 'testmodule_3')
 // Let's bundle some CSS ...
 builder.bundle('spec/frameworkx/style.css');
 builder.bundle('spec/frameworky/style.less');
+
+// An externalized package where the name has an NPM org in it 
+builder.bundle('spec/testmodule.js', 'testmodule_ext_org')
+    .withExternalModuleMapping('@jenkins-cd/js-modules')
+    .inDir('target/testmodule');

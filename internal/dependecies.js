@@ -78,3 +78,97 @@ exports.processExternalizedDependencies = function(builder) {
         }
     }
 };
+
+/**
+ * Get the externalized package metadata for the named NPM dependency.
+ * @param depPackageName The NPM dependency package name.
+ */
+exports.externalizedVersionMetadata = function(depPackageName) {
+    var packageJsonFile = cwd + '/node_modules/' + depPackageName + '/package.json';
+    
+    if (!fs.existsSync(packageJsonFile)) {
+        return undefined;
+    }
+
+    var packageJson = require(packageJsonFile);
+    
+    var metadata = {};
+    metadata.packageName = depPackageName;
+    metadata.installedVersion = parseVersion(packageJson.version);
+    metadata.depVersion = parseVersion(exports.getDependency(depPackageName).version);
+    metadata.normalizedPackageName = exports.normalizePackageName(depPackageName);
+    metadata.jsModuleNames = mmpModuleNames(metadata.normalizedPackageName, metadata.installedVersion);
+    metadata.importAs = function (scope) {
+        var scopedName;
+        if (scope) {
+            scopedName = metadata.jsModuleNames[scope];
+            if (!scopedName) {
+                throw new Error('Unknown scope "' + scope + '".');
+            }
+        } else {
+            scopedName = metadata.jsModuleNames.nameFor(metadata.depVersion);
+        }
+
+        return metadata.normalizedPackageName + ':' + scopedName;
+    };
+    
+    return metadata;
+};
+
+function parseVersion(version) {
+    // remove anything that's not a digit, a dot or an x.
+    version = version.replace(/[^\d.x]/g, '');
+    
+    var versionTokens = version.split('.');
+    var parsedVer = {};
+    
+    if (versionTokens.length >= 3) {
+        parsedVer.patch = versionTokens[2]
+    }
+    if (versionTokens.length >= 2) {
+        parsedVer.minor = versionTokens[1]
+    }
+    if (versionTokens.length >= 1) {
+        parsedVer.major = versionTokens[0]
+    }
+    
+    return parsedVer;
+}
+
+/**
+ * Normalize an NPM package name by removing all non alpha numerics and replacing
+ * with hyphens.
+ * @param packageName The NPM package name.
+ * @returns The normalized NPM package name.
+ */
+exports.normalizePackageName = function(packageName) {
+    packageName = packageName.replace(/[^\w.]/g, "-"); // replace non alphanumerics.
+    if (packageName.charAt(0) === '-') {
+        packageName = packageName.substring(1);
+    }
+    return packageName;
+};
+
+/**
+ * Create major, minor and patch (version) module names that can
+ * then be used in the .js generation and module exporting. 
+ * @param normalizedPackageName The normalized NPM package name.
+ * @param fullVersion The full version of the installed NPM package.
+ */
+function mmpModuleNames(normalizedPackageName, fullVersion) {
+    return {
+        any: normalizedPackageName,
+        major: normalizedPackageName + '-' + fullVersion.major + '.x',
+        minor: normalizedPackageName + '-' + fullVersion.major + '.' + fullVersion.minor + '.x',
+        patch: normalizedPackageName + '-' + fullVersion.major + '.' + fullVersion.minor + '.' + fullVersion.patch,
+        nameFor: function (depVersion) {
+            if (depVersion.minor === 'x') {
+                return this.major;
+            } else if (depVersion.patch === 'x') {
+                return this.minor;
+            } else {
+                return this.patch;
+            }
+        }
+    };
+}
