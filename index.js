@@ -485,12 +485,14 @@ function bundleJs(moduleToBundle, as) {
                 fs.writeFileSync(fileToBundle, "module.exports = require('" + bundle.module + "');");
             }
 
+            var fullPaths = args.isArgvSpecified('--full-paths');
+            
             var browserifyConfig = {
                 entries: [fileToBundle],
                 extensions: ['.js', '.es6', '.jsx', '.hbs'],
                 cache: {},
                 packageCache: {},
-                fullPaths: false
+                fullPaths: fullPaths
             };
             if (bundle.minifyBundle === true) {
                 browserifyConfig.debug = true;
