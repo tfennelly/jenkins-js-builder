@@ -740,12 +740,13 @@ var tasks = {
                 }
             }]})
             .on('error', function (err) {
+                logger.logError('Jasmine test failures. See console for details (or surefire JUnit report files in target folder).', err);
                 if (exports.isRebundle() || exports.isRetest()) {
-                    notifier.notify('Jasmine test failures', 'See console for details.');
+                    notifier.notify('Jasmine test failures', 'See console for details (or surefire JUnit report files in target folder).');
                     // ignore failures if we are running rebundle/retesting.
                     this.emit('end');
                 } else {
-                    throw 'Jasmine test run failure. See above for details.';
+                    process.exit(1);
                 }
             })
             )
