@@ -3,23 +3,21 @@ var gutil = require('gulp-util');
 var jasmine = require('gulp-jasmine');
 var jasmineReporters = require('jasmine-reporters');
 var browserify = require('browserify');
-var source = require('vinyl-source-stream');
-var transformTools = require('browserify-transform-tools');
 var _string = require('underscore.string');
 var fs = require('fs');
+var cwd = process.cwd();
 var args = require('./internal/args');
 var logger = require('./internal/logger');
 var notifier = require('./internal/notifier');
 var paths = require('./internal/paths');
 var dependencies = require('./internal/dependecies');
 var maven = require('./internal/maven');
+var bundlegen = require('./internal/bundlegen');
+var ModuleSpec = require('@jenkins-cd/js-modules/js/ModuleSpec');
 var testWebServer;
-var globalModuleMappingArgs = [];
 var skipBundle = skipBundle();
 var skipTest = (args.isArgvSpecified('--skipTest') || args.isArgvSpecified('--skipTests'));
-
-var cwd = process.cwd();
-var hasJenkinsJsModulesDependency = dependencies.hasJenkinsJsModulesDep();
+var packageJson = require(cwd + '/package.json');
 
 var bundles = []; // see exports.bundle function
 var bundleDependencyTaskNames = ['log-env'];
@@ -66,6 +64,10 @@ exports.isRebundle = function() {
 
 exports.isRetest = function() {
     return retestRunning;
+};
+
+exports.bundleCount = function() {
+    return bundles.length;
 };
 
 /**
@@ -132,7 +134,7 @@ exports.defineTasks = function(tasknames) {
         var gulpTask = tasks[taskname];
 
         if (!gulpTask) {
-            throw "Unknown gulp task '" + taskname + "'.";
+            throw new Error("Unknown gulp task '" + taskname + "'.");
         }
 
         exports.defineTask(taskname, gulpTask);
@@ -221,15 +223,24 @@ exports.onTaskEnd = function(taskName, callback) {
     });
 };
 
-exports.withExternalModuleMapping = function(from, to, config) {
-    var moduleMapping = toModuleMapping(from, to, config);
+exports.import = function(module, to, config) {
+    var moduleMapping = toModuleMapping(module, to, config);
     if (moduleMapping) {
-        globalModuleMappingArgs.push(moduleMapping);
+        bundlegen.addGlobalImportMapping(moduleMapping);
     }
     return exports;
 };
 
-var preBundleListeners = [];
+exports.export = function(module) {
+    bundlegen.addGlobalExportMapping(module);
+    return exports;
+};
+
+exports.withExternalModuleMapping = function(from, to, config) {
+    logger.logWarn('DEPRECATED use of builder.withExternalModuleMapping function. Change to builder.import.');
+    return exports.import(from, to, config);
+};
+
 /**
  * Add a listener to be called just before Browserify starts bundling.
  * <p>
@@ -239,7 +250,20 @@ var preBundleListeners = [];
  * @param listener The listener to add.
  */
 exports.onPreBundle = function(listener) {
-    preBundleListeners.push(listener);
+    bundlegen.onPreBundle(listener);
+    return exports;
+};
+
+/**
+ * Add a listener to be called just after Browserify finishes bundling.
+ * <p>
+ * The listener is called with the {@code bundle} as {@code this} and
+ * the location of the generated bundle as as the only arg.
+ *
+ * @param listener The listener to add.
+ */
+exports.onPostBundle = function(listener) {
+    bundlegen.onPostBundle(listener);
     return exports;
 };
 
@@ -249,9 +273,6 @@ function normalizePath(path) {
     path = _string.rtrim(path, '/');
 
     return path;
-}
-function packageToPath(packageName) {
-    return _string.replaceAll(packageName, '\\.', '/');
 }
 
 exports.bundle = function(resource, as) {
@@ -267,7 +288,7 @@ exports.bundle = function(resource, as) {
 function bundleJs(moduleToBundle, as) {
     if (!moduleToBundle) {
         gutil.log(gutil.colors.red("Error: Invalid bundle registration for module 'moduleToBundle' must be specify."));
-        throw "'bundle' registration failed. See error above.";
+        throw new Error("'bundle' registration failed. See error above.");
     }
 
     var bundle = {};
@@ -282,18 +303,27 @@ function bundleJs(moduleToBundle, as) {
         bundle.as = _string.strLeftBack(as, '.js');
     }
 
+    bundle.asModuleSpec = new ModuleSpec(bundle.as);
+    var loadBundleFileNamePrefix = bundle.asModuleSpec.getLoadBundleFileNamePrefix();
+    if (loadBundleFileNamePrefix) {
+        bundle.as = loadBundleFileNamePrefix;
+    }
+    bundle.bundleExportNamespace = bundle.asModuleSpec.namespace;
+
     function assertBundleOutputUndefined() {
         if (bundle.bundleInDir) {
             gutil.log(gutil.colors.red("Error: Invalid bundle registration. Bundle output (inDir) already defined."));
-            throw "'bundle' registration failed. See error above.";
+            throw new Error("'bundle' registration failed. See error above.");
         }
     }
 
     bundle.bundleModule = moduleToBundle;
     bundle.bundleOutputFile = bundle.as + '.js';
     bundle.moduleMappings = [];
+    bundle.moduleExports = [];
     bundle.exportEmptyModule = true;
-    bundle.useGlobalModuleMappings = true;
+    bundle.useGlobalImportMappings = true;
+    bundle.useGlobalExportMappings = true;
     bundle.minifyBundle = args.isArgvSpecified('--minify');
     bundle.generateNoImportsBundle = function() {
         if (skipBundle) {
@@ -317,7 +347,7 @@ function bundleJs(moduleToBundle, as) {
         }
         if (!dir) {
             gutil.log(gutil.colors.red("Error: Invalid bundle registration for module '" + moduleToBundle + "'. You can't specify a 'null' dir name when calling inDir."));
-            throw "'bundle' registration failed. See error above.";
+            throw new Error("'bundle' registration failed. See error above.");
         }
         assertBundleOutputUndefined();
         bundle.bundleInDir = normalizePath(dir);
@@ -334,8 +364,18 @@ function bundleJs(moduleToBundle, as) {
         return bundle;
     };
     
+    bundle.ignoreGlobalImportMappings = function() {
+        bundle.useGlobalImportMappings = false;
+        return bundle;
+    };
+
     bundle.ignoreGlobalModuleMappings = function() {
-        bundle.useGlobalModuleMappings = false;
+        logger.logWarn('DEPRECATED use of bundle.ignoreGlobalModuleMappings function. Change to bundle.ignoreGlobalImportMappings.');
+        return bundle.ignoreGlobalImportMappings();
+    };
+
+    bundle.ignoreGlobalExportMappings = function() {
+        bundle.useGlobalExportMappings = false;
         return bundle;
     };
     
@@ -344,22 +384,41 @@ function bundleJs(moduleToBundle, as) {
         return bundle;
     };
     
-    bundle._withExternalModuleMapping = function(moduleMapping) {
+    bundle._import = function(moduleMapping) {
         if (skipBundle) {
             return bundle;
         }
-        if (moduleMapping.to === bundle.getModuleQName()) {
+
+        var toSpec = new ModuleSpec(moduleMapping.to);
+        if (toSpec.importAs() === bundle.importAs()) {
             // Do not add mappings to itself.
             return bundle;
         }
-        bundle.moduleMappings.push(moduleMapping);
+
+        for (var i in bundle.moduleMappings) {
+            if (bundle.moduleMappings[i].from === moduleMapping.from) {
+                logger.logWarn('Ignoring require mapping of "' + moduleMapping.from + '" to "' + moduleMapping.to + '". The bundle already has a mapping for "' + moduleMapping.from + '".');
+                return bundle;
+            }
+        }
+
+        if (moduleMapping.fromSpec) {
+            bundle.moduleMappings.push(moduleMapping);
+        } else {
+            bundle.moduleMappings.push(toModuleMapping(moduleMapping.from, moduleMapping.to, moduleMapping.config));
+        }
         return bundle;
     };
     
-    bundle.withExternalModuleMapping = function(from, to, config) {
-        var moduleMapping = toModuleMapping(from, to, config);
-        bundle._withExternalModuleMapping(moduleMapping);
+    bundle.import = function(module, to, config) {
+        var moduleMapping = toModuleMapping(module, to, config);
+        bundle._import(moduleMapping);
         return bundle;
+    };
+
+    bundle.withExternalModuleMapping = function(from, to, config) {
+        logger.logWarn('DEPRECATED use of bundle.withExternalModuleMapping function. Change to bundle.import.');
+        return bundle.import(from, to, config);
     };
 
     bundle.less = function(src, targetDir) {
@@ -376,33 +435,54 @@ function bundleJs(moduleToBundle, as) {
         bundle.bundleExportNamespace = toNamespace;
         return bundle;
     };
-    bundle.export = function(toNamespace) {
+    bundle.export = function(moduleName) {
         if (skipBundle) {
             return bundle;
         }
         dependencies.assertHasJenkinsJsModulesDependency('Cannot bundle "export".');
-        if (toNamespace) {
-            bundle.bundleExport = true;
-            bundle.bundleExportNamespace = toNamespace;
-        } else if (maven.isMavenProject) {
-            bundle.bundleExport = true;
-            // Use the maven artifactId as the namespace.
-            bundle.bundleExportNamespace = maven.getArtifactId();
-            if (!maven.isHPI()) {
-                logger.logWarn("\t- Bundling process will use the maven pom artifactId ('" + bundle.bundleExportNamespace + "') as the bundle export namespace. You can specify a namespace as a parameter to the 'export' method call.");
+
+        if (moduleName) {
+            if (moduleName === packageJson.name) {
+                // We are exporting the top/entry level module of the generated bundle.
+                // This is the "traditional" export use case.
+                bundle.bundleExport = true;
+                bundle.bundleExportNamespace = packageJson.name;
+            } else if (dependencies.getDependency(moduleName) !== undefined) {
+                // We are exporting some dependency of this module Vs exporting
+                // the top/entry level module of the generated bundle. This allows the bundle
+                // to control loading of a specific dependency (or set of) and then share that with
+                // other bundles, which is needed where we have "singleton" type modules
+                // e.g. react and react-dom.
+                bundle.moduleExports.push(moduleName);
+            } else {
+                logger.logError("Error: Cannot export module '" + moduleName + "' - not the name of this module or one of it's dependencies.");
+                logger.logError("       (if '" + moduleName + "' is the namespace you want to export to, use the 'bundle.namespace' function)");
             }
         } else {
-            gutil.log(gutil.colors.red("Error: This is not a maven project. You must define a 'toNamespace' argument to the 'export' call."));
-            return;
+            if (bundle.bundleExportNamespace) {
+                bundle.bundleExport = true;
+            } else if (maven.isMavenProject) {
+                bundle.bundleExport = true;
+                // Use the maven artifactId as the namespace.
+                bundle.bundleExportNamespace = maven.getArtifactId();
+                if (!maven.isHPI()) {
+                    logger.logWarn("\t- Bundling process will use the maven pom artifactId ('" + bundle.bundleExportNamespace + "') as the bundle export namespace. You can specify a namespace as a parameter to the 'export' method call.");
+                }
+            } else {
+                logger.logError("Error: This is not a maven project. You must define a namespace via the 'namespace' function on the bundle.");
+                return bundle;
+            }
+            logger.logInfo("\t- Bundle will be exported as '" + bundle.bundleExportNamespace + ":" + bundle.as + "'.");
         }
-        logger.logInfo("\t- Bundle will be exported as '" + bundle.bundleExportNamespace + ":" + bundle.as + "'.");
+        return bundle;
     };
 
-    bundle.getModuleQName = function() {
-        if (bundle.bundleExportNamespace) {
-            return bundle.bundleExportNamespace + ':' + bundle.as;
+    bundle.importAs = function() {
+        if (bundle.bundleExportNamespace && bundle.bundleExportNamespace !== bundle.asModuleSpec.namespace) {
+            var modifiedSpec = new ModuleSpec(bundle.bundleExportNamespace + ':' + bundle.asModuleSpec.getLoadBundleName());
+            return modifiedSpec.importAs();
         } else {
-            return 'undefined:' + bundle.as;
+            return bundle.asModuleSpec.importAs();
         }
     };
 
@@ -445,136 +525,7 @@ function bundleJs(moduleToBundle, as) {
         }
 
         exports.defineBundleTask(bundleTaskName, function() {
-            if (!bundle.bundleInDir) {
-                var adjunctBase = setAdjunctInDir(bundle);
-                logger.logInfo('Javascript bundle "' + bundle.as + '" will be available in Jenkins as adjunct "' + adjunctBase + '.' + bundle.as + '".')
-            }
-
-            // Add all global mappings.
-            if (bundle.useGlobalModuleMappings === true) {
-                for (var i = 0; i < globalModuleMappingArgs.length; i++) {
-                    bundle._withExternalModuleMapping(globalModuleMappingArgs[i]);
-                }
-            }
-
-            var bundleTo = bundle.bundleInDir;
-
-            if (!applyImports) {
-                bundleTo += '/no_imports';
-            }
-
-            // Only process LESS when generating the bundle containing imports. If using the "no_imports" bundle, you
-            // need to take care of adding the CSS yourself.
-            if (applyImports && bundle.lessSrcPath) {
-                var lessBundleTo = bundleTo;
-
-                if (bundle.lessTargetDir) {
-                    lessBundleTo = bundle.lessTargetDir;
-                }
-
-                less(bundle.lessSrcPath, lessBundleTo);
-            }
-
-            var fileToBundle = bundle.bundleModule;
-            if (bundle.bundleDependencyModule) {
-                // Lets generate a temp file containing the module require.
-                if (!fs.existsSync('target')) {
-                    fs.mkdirSync('target');
-                }
-                fileToBundle = 'target/' + bundle.bundleOutputFile;
-                fs.writeFileSync(fileToBundle, "module.exports = require('" + bundle.module + "');");
-            }
-
-            var fullPaths = args.isArgvSpecified('--full-paths');
-            
-            var browserifyConfig = {
-                entries: [fileToBundle],
-                extensions: ['.js', '.es6', '.jsx', '.hbs'],
-                cache: {},
-                packageCache: {},
-                fullPaths: fullPaths
-            };
-            if (bundle.minifyBundle === true) {
-                browserifyConfig.debug = true;
-            }
-            var bundler = browserify(browserifyConfig);
-
-            var hasJSX = paths.hasSourceFiles('jsx');
-            var hasES6 = paths.hasSourceFiles('es6');
-            var hasBabelRc = fs.existsSync('.babelrc');
-
-            if (langConfig.ecmaVersion === 6 || hasJSX || hasES6 || hasBabelRc) {
-                var babelify = require('babelify');
-                var presets = [];
-                var plugins = [];
-
-                if (hasBabelRc) {
-                    logger.logInfo("Will use babel config from .babelrc");
-                }
-                else if (hasJSX) {
-                    presets.push('react');
-                    dependencies.warnOnMissingDependency('babel-preset-react', 'You have JSX sources in this project. Transpiling these will require the "babel-preset-react" package.');
-                    presets.push('es2015');
-                    dependencies.warnOnMissingDependency('babel-preset-es2015', 'You have JSX/ES6 sources in this project. Transpiling these will require the "babel-preset-es2015" package.');
-                } else {
-                    presets.push('es2015');
-                    dependencies.warnOnMissingDependency('babel-preset-es2015', 'You have ES6 sources in this project. Transpiling these will require the "babel-preset-es2015" package.');
-                }
-
-                var babelConfig = {};
-
-                // if no .babelrc was found, configure babel with the default presets and plugins from above
-                if (!hasBabelRc) {
-                    babelConfig.presets = presets;
-                    babelConfig.plugins = plugins;
-                }
-
-                // if .babelrc was found, an empty config object must be passed in order for .babelrc config to be read automatically
-                bundler.transform(babelify, babelConfig);
-            }
-
-            if (bundle.bundleTransforms) {
-                for (var i = 0; i < bundle.bundleTransforms.length; i++) {
-                    bundler.transform(bundle.bundleTransforms[i]);
-                }
-            }
-
-            if (applyImports) {
-                addModuleMappingTransforms(bundle, bundler);
-            }
-
-            if (bundle.minifyBundle === true) {
-                var sourceMap = bundle.as + '.map.json';
-                bundler.plugin('minifyify', {
-                    map: sourceMap,
-                    output: bundleTo + '/' + sourceMap
-                });
-            }
-
-            for (var i = 0; i < preBundleListeners.length; i++) {
-                preBundleListeners[i].call(bundle, bundler);
-            }
-            
-            // Allow reading of stuff from the filesystem.
-            bundler.transform(require('brfs'));
-            
-            return bundler.bundle()
-                .on('error', function (err) {
-                    logger.logError('Browserify bundle processing error');
-                    if (err) {
-                        logger.logError('\terror: ' + err);
-                    }
-                    if (exports.isRebundle() || exports.isRetest()) {
-                        notifier.notify('bundle:watch failure', 'See console for details.');
-                        // ignore failures if we are running rebundle/retesting.
-                        this.emit('end');
-                    } else {
-                        throw 'Browserify bundle processing error. See above for details.';
-                    }
-                })
-                .pipe(source(bundle.bundleOutputFile))
-                .pipe(gulp.dest(bundleTo))
-                ;
+            return bundlegen.doJSBundle(bundle, applyImports);
         });
     }
 
@@ -602,7 +553,7 @@ function bundleCss(resource, format) {
         }
         if (!dir) {
             logger.logError("Error: Invalid bundle registration for CSS resource '" + resource + "'. You can't specify a 'null' dir name when calling inDir.");
-            throw "'bundle' registration failed. See error above.";
+            throw new Error("'bundle' registration failed. See error above.");
         }
         bundle.bundleInDir = normalizePath(dir);
         return bundle;
@@ -610,52 +561,14 @@ function bundleCss(resource, format) {
     
     var bundleTaskName = format + '_bundle_' + bundle.as;
     exports.defineBundleTask(bundleTaskName, function() {
-        var ncp = require('ncp').ncp;
-
-        if (!bundle.bundleInDir) {
-            var adjunctBase = setAdjunctInDir(bundle);
-            logger.logInfo('CSS resource "' + resource + '" will be available in Jenkins as adjunct "' + adjunctBase + '.' + bundle.as + '".')
-        }
-        
-        paths.mkdirp(bundle.bundleInDir);
-        ncp(folder, bundle.bundleInDir, function (err) {
-            if (err) {
-                return logger.logError(err);
-            }
-            if (bundle.format === 'less') {
-                less(resource, bundle.bundleInDir);
-            }
-            // Add a .adjunct marker file in each of the subdirs
-            paths.walkDirs(bundle.bundleInDir, function(dir) {
-                var dotAdjunct = dir + '/.adjunct';
-                if (!fs.existsSync(dotAdjunct)) {
-                    fs.writeFileSync(dotAdjunct, '');
-                }
-            });
-        });
+        return bundlegen.doCSSBundle(bundle, resource);
     });
     
     return bundle;
 }
 
-function setAdjunctInDir(bundle) {
-    var adjunctBase = 'org/jenkins/ui/jsmodules';
-    if (bundle.bundleExportNamespace) {
-        adjunctBase += '/' + normalizeForJavaIdentifier(bundle.bundleExportNamespace);
-    } else if (maven.isMavenProject) {
-        adjunctBase += '/' + normalizeForJavaIdentifier(maven.getArtifactId());
-    }
-    bundle.bundleInDir = 'target/classes/' + adjunctBase;
-    return _string.replaceAll(adjunctBase, '/', '\.');
-}
-
-function normalizeForJavaIdentifier(string) {
-    // Replace all non alphanumerics with an underscore.
-    return string.replace(/\W/g, '_');
-}
-
 function toModuleMapping(from, to, config) {
-    dependencies.assertHasJenkinsJsModulesDependency('Cannot bundle "withExternalModuleMapping".');
+    dependencies.assertHasJenkinsJsModulesDependency('Cannot process bundle "import".');
     
     // 'to' is optional, so maybe the second arg is a 
     // config object. 
@@ -678,13 +591,20 @@ function toModuleMapping(from, to, config) {
     }
 
     if (!from) {
-        var message = "Cannot call 'withExternalModuleMapping' without defining the 'from' module name.";
+        var message = "Cannot call 'import' without defining the 'from' module name.";
         logger.logError(message);
-        throw message;
+        throw new Error(message);
     }
+
+    var fromSpec = new ModuleSpec(from);
+
     if (!to) {
         var adjExt = require('./internal/adjunctexternal');
         to = adjExt.bundleFor(exports, from);
+        // If still nothing, use a qualified version of the from
+        if (!to) {
+            to = fromSpec.importAs();
+        }
     }
 
     // special case because we are externalizing handlebars runtime for handlebarsify.
@@ -694,6 +614,7 @@ function toModuleMapping(from, to, config) {
 
     return {
         from: from,
+        fromSpec: fromSpec,
         to: to,
         config: config
     };
@@ -800,151 +721,6 @@ function skipBundle() {
     }
     
     return args.isArgvSpecified('--skipBundle');
-}
-
-function addModuleMappingTransforms(bundle, bundler) {
-    var moduleMappings = bundle.moduleMappings;
-    var requiredModuleMappings = [];
-
-    if (moduleMappings.length > 0) {
-        var requireTransform = transformTools.makeRequireTransform("requireTransform",
-            {evaluateArguments: true},
-            function(args, opts, cb) {
-                var required = args[0];
-                for (var i = 0; i < moduleMappings.length; i++) {
-                    var mapping = moduleMappings[i];
-                    if (mapping.from === required) {
-                        if (mapping.config.require) {
-                            return cb(null, "require('" + mapping.config.require + "')");
-                        } else {
-                            if (requiredModuleMappings.indexOf(mapping.to) === -1) {
-                                requiredModuleMappings.push(mapping.to);
-                            }
-                            return cb(null, "require('@jenkins-cd/js-modules').require('" + mapping.to + "')");
-                        }
-                    }
-                }
-                return cb();
-            });
-        bundler.transform(requireTransform);
-    }
-    var importExportApplied = false;
-    var importExportTransform = transformTools.makeStringTransform("importExportTransform", {},
-        function (content, opts, done) {
-            if (!importExportApplied) {
-                try {
-                    if(!hasJenkinsJsModulesDependency) {
-                        throw "This module must have a dependency on the '@jenkins-cd/js-modules' package. Please run 'npm install --save @jenkins-cd/js-modules'.";
-                    }
-                    
-                    var exportNamespace = 'undefined'; // global namespace
-                    var exportModule = undefined;
-                    
-                    if (bundle.exportEmptyModule) {
-                        exportModule = '{}'; // exporting nothing (an "empty" module object)
-                    }
-
-                    if (bundle.bundleExportNamespace) {
-                        // It's a hpi plugin, so use it's name as the export namespace.
-                        exportNamespace = "'" + bundle.bundleExportNamespace + "'";
-                    }
-                    if (bundle.bundleExport) {
-                        // export function was called, so export the module.
-                        exportModule = 'module'; // export the module
-                    }
-
-                    if(exportModule) {
-                        // Always call export, even if the export function was not called on the builder instance.
-                        // If the export function was not called, we export nothing (see above). In this case, it just
-                        // generates an event for any modules that need to sync on the load event for the module.
-                        content += "\n" +
-                            "\t\trequire('@jenkins-cd/js-modules').export(" + exportNamespace + ", '" + bundle.as + "', " + exportModule + ");";
-                    }
-                    content += "\n\n";
-
-                    var wrappedContent =
-                        "var ___$$$___jsModules = require('@jenkins-cd/js-modules');\n\n" +
-                        "___$$$___jsModules.whoami('" + bundle.bundleExportNamespace + ":" + bundle.as + "');\n\n" +
-                        "/*** Start Module Exec Function ***************************************/\n" +
-                        "function ___$$$___exec() {\n" +
-                            content +
-                        //"\n" +
-                        //"   console.debug('jenkins-js-modules: JS bundle " + (bundle.bundleExportNamespace || 'nns') + ":" + bundle.as + " started.');" +
-                        //"\n" +
-                        "}\n" +
-                        "/*** End Module Exec Function   ***************************************/\n" +
-                        "\n" +
-                        "if (___$$$___requiredModuleMappings.length > 0) {\n" +
-                        //"\n" +
-                        //"   console.debug('jenkins-js-modules: JS bundle " + (bundle.bundleExportNamespace || 'nns') + ":" + bundle.as + " waiting on bundle loads: ', ___$$$___requiredModuleMappings);" +
-                        //"\n" +
-                        "    ___$$$___jsModules.import.apply(___$$$___jsModules.import, ___$$$___requiredModuleMappings)\n" +
-                        "        .onFulfilled(function() {\n" +
-                        "\n" +
-                        "        ___$$$___exec();\n" +
-                        "\n" +
-                        "    });\n\n" +
-                        "} else {\n\n" +
-                        "    ___$$$___exec();\n\n" +
-                        "}";
-                    
-                    // perform addModuleCSSToPage actions for mappings that requested it.
-                    // We don't need the imports to complete before adding these. We can just add
-                    // them immediately.
-                    var jsmodules = require('@jenkins-cd/js-modules/js/internal');
-                    for (var i = 0; i < moduleMappings.length; i++) {
-                        var mapping = moduleMappings[i];
-                        var addDefaultCSS = mapping.config.addDefaultCSS;
-                        if (addDefaultCSS && addDefaultCSS === true) {
-                            var parsedModuleQName = jsmodules.parseResourceQName(mapping.to);
-                            wrappedContent +=
-                                "require('@jenkins-cd/js-modules').addModuleCSSToPage('" + parsedModuleQName.namespace + "', '" + parsedModuleQName.moduleName + "');\n";
-                        }
-                    }
-
-                    return done(null, wrappedContent);
-                } finally {
-                    importExportApplied = true;
-                }
-            } else {
-                return done(null, content);
-            }
-        });
-
-    bundler.transform(importExportTransform);
-
-    var through = require('through2');
-    bundler.pipeline.get('deps').push(through.obj(function (row, enc, next) {
-        if (row.entry) {
-            row.source = "var ___$$$___requiredModuleMappings = " + JSON.stringify(requiredModuleMappings) + ";\n\n" + row.source;
-        }
-        this.push(row);
-        next();
-    }));
-}
-
-function less(src, targetDir) {
-    var less = require('gulp-less');
-    gulp.src(src)
-        .pipe(less().on('error', function (err) {
-            logger.logError('LESS processing error:');
-            if (err) {
-                logger.logError('\tmessage: ' + err.message);
-                logger.logError('\tline #:  ' + err.line);
-                if (err.extract) {
-                    logger.logError('\textract: ' + JSON.stringify(err.extract));
-                }
-            }
-            if (exports.isRebundle() || exports.isRetest()) {
-                notifier.notify('LESS processing error', 'See console for details.');
-                // ignore failures if we are running rebundle/retesting.
-                this.emit('end');
-            } else {
-                throw 'LESS processing error. See above for details.';
-            }
-        }))
-        .pipe(gulp.dest(targetDir));
-    logger.logInfo("LESS CSS pre-processing completed to '" + targetDir + "'.");
 }
 
 function _startTestWebServer(config) {

@@ -2,6 +2,7 @@ var fs = require('fs');
 var cwd = process.cwd();
 var packageJson = require(cwd + '/package.json');
 var logger = require('./logger');
+var Version = require('@jenkins-cd/js-modules/js/Version');
 
 exports.getDependency = function(depName) {
     function findDep(onDepMap) {
@@ -69,11 +70,28 @@ exports.assertHasJenkinsJsModulesDependency = function(message) {
 };
 
 exports.processExternalizedDependencies = function(builder) {
-    if (packageJson.jenkinscd && packageJson.jenkinscd.extDependencies) {
-        var extDependencies = packageJson.jenkinscd.extDependencies;
-        if (extDependencies.length) {
-            for (var i = 0; i < extDependencies.length; i++) {
-                builder.withExternalModuleMapping(extDependencies[i]);
+    if (packageJson.jenkinscd) {
+        var imports = packageJson.jenkinscd.import;
+
+        if (!imports && packageJson.jenkinscd.extDependencies) {
+            imports = packageJson.jenkinscd.extDependencies;
+            logger.logWarn('DEPRECATED use of jenkinscd.extDependencies in package.json. Change to jenkinscd.import.');
+        }
+
+        if (imports) {
+            for (var i = 0; i < imports.length; i++) {
+                var theImport = imports[i];
+                if (typeof theImport === 'object') {
+                    builder.import(theImport.name, theImport);
+                } else {
+                    builder.import(theImport);
+                }
+            }
+        }
+        var exports = packageJson.jenkinscd.export;
+        if (exports) {
+            for (var i = 0; i < exports.length; i++) {
+                builder.export(exports[i]);
             }
         }
     }
@@ -94,8 +112,8 @@ exports.externalizedVersionMetadata = function(depPackageName) {
     
     var metadata = {};
     metadata.packageName = depPackageName;
-    metadata.installedVersion = parseVersion(packageJson.version);
-    metadata.depVersion = parseVersion(exports.getDependency(depPackageName).version);
+    metadata.installedVersion = new Version(packageJson.version);
+    metadata.depVersion = new Version(exports.getDependency(depPackageName).version);
     metadata.normalizedPackageName = exports.normalizePackageName(depPackageName);
     metadata.jsModuleNames = mmpModuleNames(metadata.normalizedPackageName, metadata.installedVersion);
     metadata.importAs = function (scope) {
@@ -114,26 +132,6 @@ exports.externalizedVersionMetadata = function(depPackageName) {
     
     return metadata;
 };
-
-function parseVersion(version) {
-    // remove anything that's not a digit, a dot or an x.
-    version = version.replace(/[^\d.x]/g, '');
-    
-    var versionTokens = version.split('.');
-    var parsedVer = {};
-    
-    if (versionTokens.length >= 3) {
-        parsedVer.patch = versionTokens[2]
-    }
-    if (versionTokens.length >= 2) {
-        parsedVer.minor = versionTokens[1]
-    }
-    if (versionTokens.length >= 1) {
-        parsedVer.major = versionTokens[0]
-    }
-    
-    return parsedVer;
-}
 
 /**
  * Normalize an NPM package name by removing all non alpha numerics and replacing
@@ -157,10 +155,10 @@ exports.normalizePackageName = function(packageName) {
  */
 function mmpModuleNames(normalizedPackageName, fullVersion) {
     return {
-        any: normalizedPackageName,
-        major: normalizedPackageName + '-' + fullVersion.major + '.x',
-        minor: normalizedPackageName + '-' + fullVersion.major + '.' + fullVersion.minor + '.x',
-        patch: normalizedPackageName + '-' + fullVersion.major + '.' + fullVersion.minor + '.' + fullVersion.patch,
+        any: normalizedPackageName + '@any',
+        major: normalizedPackageName + '@' + fullVersion.major + '.x',
+        minor: normalizedPackageName + '@' + fullVersion.major + '.' + fullVersion.minor + '.x',
+        patch: normalizedPackageName + '@' + fullVersion.major + '.' + fullVersion.minor + '.' + fullVersion.patch,
         nameFor: function (depVersion) {
             if (depVersion.minor === 'x') {
                 return this.major;
@@ -168,6 +166,15 @@ function mmpModuleNames(normalizedPackageName, fullVersion) {
                 return this.minor;
             } else {
                 return this.patch;
+            }
+        },
+        filenameFor: function (depVersion) {
+            if (depVersion.minor === 'x') {
+                return normalizedPackageName + '-' + fullVersion.major + '-x';
+            } else if (depVersion.patch === 'x') {
+                return normalizedPackageName + '-' + fullVersion.major + '-' + fullVersion.minor + '-x';
+            } else {
+                return normalizedPackageName + '-' + fullVersion.major + '-' + fullVersion.minor + '-' + fullVersion.patch;
             }
         }
     };
