@@ -391,15 +391,19 @@ function expandDependencyExports(bundleExports) {
 function setAdjunctInDir(bundle) {
     var adjunctBase = 'org/jenkins/ui/jsmodules';
     if (bundle.bundleExportNamespace) {
-        adjunctBase += '/' + normalizeForJavaIdentifier(bundle.bundleExportNamespace);
+        if (maven.isMavenProject && bundle.bundleExportNamespace === maven.getArtifactId()) {
+            adjunctBase += '/' + maven.getArtifactId();
+        } else {
+            adjunctBase += '/' + normalizeForFilenameUse(bundle.bundleExportNamespace);
+        }
     } else if (maven.isMavenProject) {
-        adjunctBase += '/' + normalizeForJavaIdentifier(maven.getArtifactId());
+        adjunctBase += '/' + maven.getArtifactId();
     }
     bundle.bundleInDir = 'target/classes/' + adjunctBase;
     return _string.replaceAll(adjunctBase, '/', '\.');
 }
 
-function normalizeForJavaIdentifier(string) {
+function normalizeForFilenameUse(string) {
     // Replace all non alphanumerics with an underscore.
-    return string.replace(/\W/g, '_');
+    return string.replace(/\W/g, '-');
 }
