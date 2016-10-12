@@ -382,7 +382,12 @@ function expandDependencyExports(bundleExports) {
     var dependencyExports = [];
     for (var i in bundleExports) {
         var packageName = bundleExports[i];
-        dependencyExports.push(dependencies.externalizedVersionMetadata(packageName));
+        var versionMetadata = dependencies.externalizedVersionMetadata(packageName);
+        if (versionMetadata) {
+            dependencyExports.push(versionMetadata);
+        } else {
+            logger.logWarn("Ignoring export decl for package '" + packageName + "'. This package is not installed, or is not a declared dependency.");
+        }
     }
 
     return dependencyExports;

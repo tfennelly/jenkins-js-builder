@@ -111,9 +111,15 @@ exports.externalizedVersionMetadata = function(depPackageName) {
     var packageJson = require(packageJsonFile);
     
     var metadata = {};
+    var declaredDepVersion = exports.getDependency(depPackageName);
+
+    if (!declaredDepVersion) {
+        return undefined;
+    }
+
     metadata.packageName = depPackageName;
     metadata.installedVersion = new Version(packageJson.version);
-    metadata.depVersion = new Version(exports.getDependency(depPackageName).version);
+    metadata.depVersion = new Version(declaredDepVersion.version);
     metadata.normalizedPackageName = exports.normalizePackageName(depPackageName);
     metadata.jsModuleNames = mmpModuleNames(metadata.normalizedPackageName, metadata.installedVersion);
     metadata.importAs = function (scope) {
