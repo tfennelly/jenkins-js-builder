@@ -30,7 +30,7 @@ exports.bundleFor = function(builder, packageName) {
     if (!fs.existsSync(cwd + '/' + inDir + '/' + jsModuleNames.filenameFor(depVersion) + '.js')) {
         // We need to generate an adjunct bundle for the package.
         var bundleSrc = generateBundleSrc(extVersionMetadata);
-        builder.bundle(bundleSrc, packageName + '@' + depVersion.raw)
+        builder.bundle(bundleSrc, packageName + '@' + depVersion.asBaseVersionString())
             .inDir(inDir)
             .ignoreGlobalExportMappings()
             .noEmptyModuleExport();
