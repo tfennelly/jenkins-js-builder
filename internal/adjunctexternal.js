@@ -24,13 +24,13 @@ exports.bundleFor = function(builder, packageName) {
 
     var normalizedPackageName = extVersionMetadata.normalizedPackageName;
     var jsModuleNames = extVersionMetadata.jsModuleNames;
-    var depVersion = extVersionMetadata.depVersion;
+    var installedVersion = extVersionMetadata.installedVersion;
     var inDir = 'target/classes/org/jenkins/ui/jsmodules/' + normalizedPackageName;
     
-    if (!fs.existsSync(cwd + '/' + inDir + '/' + jsModuleNames.filenameFor(depVersion) + '.js')) {
+    if (!fs.existsSync(cwd + '/' + inDir + '/' + jsModuleNames.filenameFor(installedVersion) + '.js')) {
         // We need to generate an adjunct bundle for the package.
         var bundleSrc = generateBundleSrc(extVersionMetadata);
-        builder.bundle(bundleSrc, packageName + '@' + depVersion.asBaseVersionString())
+        builder.bundle(bundleSrc, packageName + '@' + installedVersion.asBaseVersionString())
             .inDir(inDir)
             .ignoreGlobalExportMappings()
             .noEmptyModuleExport();
