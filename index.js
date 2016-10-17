@@ -623,6 +623,7 @@ function toModuleMapping(from, to, config) {
 function buildSrcWatchList(includeTestSrc) {
     var watchList = [];
 
+    watchList.push('.watch_trigger');
     watchList.push('./index.js');
     for (var i = 0; i < paths.srcPaths.length; i++) {
         var srcPath = paths.srcPaths[i];
