@@ -377,6 +377,17 @@ Skip linting.
 $ mvn clean -DskipLint
 ```
 
+# Managing bundle size
+
+Generated JavaScript bundles can become very big very fast if you don't manage them properly. This is a constant
+challenge and something you need to keep an eye on. We constantly do battle against this problem on [Blue Ocean].
+
+Once it has been identified that a bundle has become very large, then you need to analyse the bundle to find out
+what modules/packages are causing the bloat and if there's an opportunity to [externalize] modules/packages that are
+in use across a number of bundles.
+ 
+> Note: [disc] is a useful tool for analysing Browserify generated bundles. [See this Jenkins Dev list thread](https://groups.google.com/forum/?hl=en#!searchin/jenkinsci-dev/bundle$20size%7Csort:relevance/jenkinsci-dev/UknJzFso3y8/jbqwZINtBAAJ) for some details on how we've used it in the past.
+
 [bundle]: https://github.com/jenkinsci/js-modules/blob/master/FAQs.md#what-is-the-difference-between-a-module-and-a-bundle
 [js-modules]: https://github.com/jenkinsci/js-modules
 [js-builder]: https://github.com/jenkinsci/js-builder
@@ -396,3 +407,6 @@ $ mvn clean -DskipLint
 [Jasmine]: http://jasmine.github.io/
 [Moment.js]: http://momentjs.com/
 [plugin-pom]: https://github.com/jenkinsci/plugin-pom
+[externalize]: https://github.com/jenkinsci/js-samples/blob/master/step-04-externalize-libs/HOW-IT-WORKS.md#configure-node-build-to-externalize-dependencies
+[Blue Ocean]: https://github.com/jenkinsci/blueocean-plugin
+[disc]: https://github.com/hughsk/disc/
