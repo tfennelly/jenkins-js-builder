@@ -17,6 +17,7 @@ __Table of Contents__:
     <a href="#maven-integration">Maven Integration</a><br/>
     <a href="https://github.com/jenkinsci/js-samples">Sample Plugins (Jenkins - HPI)</a><br/>    
     <a href="https://issues.jenkins-ci.org/browse/JENKINS/component/21132">JIRA</a><br/>    
+    <a href="#managing-bundle-size">Managing bundle size</a><br/>
 </ul>    
 </p>
 
