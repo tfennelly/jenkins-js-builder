@@ -4,6 +4,8 @@
 *.iws
 .idea/
 
+.watch_trigger
+
 # Node
 node/
 node_modules/
