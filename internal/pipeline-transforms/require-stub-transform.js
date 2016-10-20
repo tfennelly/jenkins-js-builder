@@ -6,6 +6,7 @@
 
 var through = require('through2');
 var unpack = require('browser-unpack');
+var browserifyTree = require('browserify-tree');
 var ModuleSpec = require('@jenkins-cd/js-modules/js/ModuleSpec');
 var logger = require('../logger');
 var node_modules_path = process.cwd() + '/node_modules/';
@@ -92,6 +93,12 @@ function updateBundleStubs(packEntries, moduleMappings) {
             removeDependant(moduleDef, metadata);
         }
     }
+
+    // Scan the bundle again now and remove all unused stragglers.
+    const unusedModules = browserifyTree.getUnusedModules(metadata.packEntries);
+    unusedModules.forEach(function(moduleId) {
+        removePackEntryById(metadata, moduleId);
+    });
     
     if (!args.isArgvSpecified('--full-paths')) {
         metadata = fullPathsToIds(metadata);
