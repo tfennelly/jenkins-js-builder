@@ -38,6 +38,22 @@ gulp.on('failed', function(err) {
     process.exit(err);
 });
 
-gulp.run(tasks, {
-    cwd: cwd
-});
+// Lets pass on the options supplied, stripping off the
+// leading '--'.
+var options = {};
+var lastOpt;
+for (var i = 0; i < process.argv.length; i++) {
+    var opt = process.argv[i];
+    if (opt.indexOf('--') === 0) {
+        opt = opt.substring(2);
+        options[opt] = true;
+        lastOpt = opt;
+    } else if (lastOpt) {
+        options[lastOpt] = opt;
+        lastOpt = undefined; // clear it so we don't assign again.
+    }
+}
+delete options.tasks;
+options.cwd = cwd;
+
+gulp.run(tasks, options);
