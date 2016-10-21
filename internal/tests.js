@@ -14,6 +14,7 @@ var jasmineReporters = require('jasmine-reporters');
 var testFileSuffix = args.argvValue('--testFileSuffix', 'spec');
 var testSpecs = paths.testSrcPath + '/**/' + args.argvValue('--test', '') + '*-' + testFileSuffix + '.{js,jsx}';
 var testWebServer;
+var builder = global.__builder;
 
 logger.logInfo('Test specs: ' + testSpecs + ' (use --testFileSuffix switch to select different files)');
 
@@ -23,7 +24,7 @@ exports.getTestTask = function() {
             logger.logWarn("Warn: Test src path has been unset. No tests to run.");
         };
     }
-    if (dependencies.getDependency('gulp-mocha') && dependencies.getDependency('babel-core/register')) {
+    if (dependencies.getDependency('gulp-mocha')) {
         return mochaTestTask;
     } else {
         return jasmineTestTask;
@@ -57,7 +58,7 @@ function jasmineTestTask() {
             }]})
             .on('error', function (err) {
                 logger.logError('Jasmine test failures. See console for details (or surefire JUnit report files in target folder).', err);
-                if (exports.isRebundle() || exports.isRetest()) {
+                if (builder.isRebundle() || builder.isRetest()) {
                     notifier.notify('Jasmine test failures', 'See console for details (or surefire JUnit report files in target folder).');
                     // ignore failures if we are running rebundle/retesting.
                     this.emit('end');
@@ -71,18 +72,23 @@ function jasmineTestTask() {
 
 function mochaTestTask() {
     var mocha = require('gulp-mocha');
-    var babel = require('babel-core/register');
+    var mochaConfig = {};
 
-    gulp.src(testSpecs)
-        .pipe(mocha({
-            compilers: { js: babel }
-        })).on('error', function(e) {
-        if (global.__builder.isRetest()) {
-            // ignore test failures if we are running retest.
-            return;
-        }
-        throw e;
-    });
+    if (dependencies.getDependency('babel-core')) {
+        mochaConfig.compilers = {
+            js: require('babel-core/register')
+        };
+    }
+
+    gulp.src(testSpecs).pipe(mocha(mochaConfig))
+        .on('error', function (e) {
+            if (builder.isRetest()) {
+                console.log('**** is retest .... ignoring error');
+                // ignore test failures if we are running retest.
+                return;
+            }
+            process.exit(1);
+        });
 }
 
 
@@ -114,7 +120,7 @@ function _stopTestWebServer() {
 
 gulp.on('testing_completed', function() {
     _stopTestWebServer();
-    if (global.__builder.isRetest()) {
+    if (builder.isRetest()) {
         logger.logInfo('*********************************************');
         logger.logInfo('test:watch: watching for source changes again ...');
     }

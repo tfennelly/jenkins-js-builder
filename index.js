@@ -1,3 +1,6 @@
+// Make this builder instance globally available.
+global.__builder = exports;
+
 var gulp = require('gulp');
 var gutil = require('gulp-util');
 var browserify = require('browserify');
@@ -22,9 +25,6 @@ var bundleDependencyTaskNames = ['log-env'];
 
 var rebundleRunning = false;
 var retestRunning = false;
-
-// Make this builder instance globally available.
-global.__builder = exports;
 
 logger.logInfo('**********************************************************************');
 logger.logInfo('This build is using Jenkins JS Builder.');
