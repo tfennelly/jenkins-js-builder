@@ -1,7 +1,5 @@
 var gulp = require('gulp');
 var gutil = require('gulp-util');
-var jasmine = require('gulp-jasmine');
-var jasmineReporters = require('jasmine-reporters');
 var browserify = require('browserify');
 var _string = require('underscore.string');
 var fs = require('fs');
@@ -11,10 +9,10 @@ var logger = require('./internal/logger');
 var notifier = require('./internal/notifier');
 var paths = require('./internal/paths');
 var dependencies = require('./internal/dependecies');
+var tests = require('./internal/tests');
 var maven = require('./internal/maven');
 var bundlegen = require('./internal/bundlegen');
 var ModuleSpec = require('@jenkins-cd/js-modules/js/ModuleSpec');
-var testWebServer;
 var skipBundle = skipBundle();
 var skipTest = (args.isArgvSpecified('--skipTest') || args.isArgvSpecified('--skipTests'));
 var packageJson = require(cwd + '/package.json');
@@ -201,11 +199,7 @@ exports.tests = function(newPath) {
     return paths.testSrcPath;
 };
 
-exports.startTestWebServer = function(config) {
-    _stopTestWebServer();
-    _startTestWebServer(config);
-    logger.logInfo("\t(call require('gulp').emit('testing_completed') when testing is completed - watch async test execution)");
-};
+exports.startTestWebServer = tests.startTestWebServer;
 
 exports.onTaskStart = function(taskName, callback) {
     gulp.on('task_start', function(event) {
@@ -646,49 +640,7 @@ function rebundleLogging() {
 }
 
 var tasks = {
-    test: function () {
-        if (!paths.testSrcPath) {
-            logger.logWarn("Warn: Test src path has been unset. No tests to run.");
-            return;
-        }
-
-        var terminalReporter = new jasmineReporters.TerminalReporter({
-            verbosity: 3,
-            color: true,
-            showStack: true
-        });
-        var junitReporter = new jasmineReporters.JUnitXmlReporter({
-            savePath: 'target/surefire-reports',
-            consolidateAll: true,
-            filePrefix: 'JasmineReport'
-        });
-
-        var testFileSuffix = args.argvValue('--testFileSuffix', 'spec');
-        
-        var testSpecs = paths.testSrcPath + '/**/' + args.argvValue('--test', '') + '*-' + testFileSuffix + '.js';
-        logger.logInfo('Test specs: ' + testSpecs + ' (use --testFileSuffix switch to select different files)');
-
-        global.jenkinsBuilder = exports;
-        _startTestWebServer();
-        gulp.src(testSpecs)
-            .pipe(jasmine({reporter: [terminalReporter, junitReporter, {
-                jasmineDone: function () {
-                    gulp.emit('testing_completed');
-                }
-            }]})
-            .on('error', function (err) {
-                logger.logError('Jasmine test failures. See console for details (or surefire JUnit report files in target folder).', err);
-                if (exports.isRebundle() || exports.isRetest()) {
-                    notifier.notify('Jasmine test failures', 'See console for details (or surefire JUnit report files in target folder).');
-                    // ignore failures if we are running rebundle/retesting.
-                    this.emit('end');
-                } else {
-                    process.exit(1);
-                }
-            })
-            )
-        ;
-    },
+    test: tests.getTestTask(),
     bundle: function() {
         if (bundles.length === 0) {
             logger.logWarn("Warning: Skipping 'bundle' task. No 'module' bundles are registered. Call require('jenkins-js-build').bundle([module]) in gulpfile.js.");
@@ -722,40 +674,6 @@ function skipBundle() {
     }
     
     return args.isArgvSpecified('--skipBundle');
-}
-
-function _startTestWebServer(config) {
-    if (!config) {
-        config = {}
-    }
-    if (!config.port) {
-        config.port = 18999;
-    }
-    if (!config.root) {
-        config.root = cwd;
-    }
-
-    if (!testWebServer) {
-        // Start a web server that will allow tests to request resources.
-        testWebServer = require('node-http-server').deploy(config);
-        logger.logInfo('Testing web server started on port ' + config.port + ' (http://localhost:' + config.port + '). Content root: ' + config.root);
-    }
-}
-
-gulp.on('testing_completed', function() {
-    _stopTestWebServer();
-    if (retestRunning === true) {
-        logger.logInfo('*********************************************');
-        logger.logInfo('test:watch: watching for source changes again ...');
-    }
-});
-
-function _stopTestWebServer() {
-    if (testWebServer) {
-        testWebServer.close();
-        testWebServer = undefined;
-        logger.logInfo('Testing web server stopped.');
-    }
 }
 
 if (args.isArgvSpecified('--h') || args.isArgvSpecified('--help')) {
