@@ -15,6 +15,7 @@ var _string = require('underscore.string');
 var templates = require('./templates');
 var ModuleSpec = require('@jenkins-cd/js-modules/js/ModuleSpec');
 var entryModuleTemplate = templates.getTemplate('entry-module.hbs');
+var packageJson = require(process.cwd() + '/package.json');
 
 var hasJenkinsJsModulesDependency = dependencies.hasJenkinsJsModulesDep();
 var preBundleListeners = [];
@@ -52,6 +53,19 @@ exports.addGlobalImportMapping = function(mapping) {
 
 exports.addGlobalExportMapping = function(mapping) {
     globalExportMappings.push(mapping);
+};
+
+exports.registerPackageJsonBundles = function(builder) {
+    if (packageJson.jenkinscd && packageJson.jenkinscd.bundle) {
+        var bundles = packageJson.jenkinscd.bundle;
+        if (typeof bundles === 'string') {
+            builder.bundle(bundles);
+        } else {
+            for (var i = 0; i < bundles.length; i++) {
+                builder.bundle(bundles[i]);
+            }
+        }
+    }
 };
 
 exports.doJSBundle = function(bundle, applyImports) {

@@ -717,3 +717,7 @@ if (args.isArgvSpecified('--h') || args.isArgvSpecified('--help')) {
     // Install plugins.
     require('./internal/plugins').install(exports);
 }
+
+// Bundle registrations can also be made in
+// the package.json.
+bundlegen.registerPackageJsonBundles(exports);
