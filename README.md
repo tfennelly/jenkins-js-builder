@@ -18,6 +18,7 @@ __Table of Contents__:
     <a href="https://github.com/jenkinsci/js-samples">Sample Plugins (Jenkins - HPI)</a><br/>    
     <a href="https://issues.jenkins-ci.org/browse/JENKINS/component/21132">JIRA</a><br/>    
     <a href="#cli">CLI</a><br/>
+    <a href="#without-a-gulpfilejs">Without a `gulpfile.js`</a><br/>
     <a href="#managing-bundle-size">Managing bundle size</a><br/>
 </ul>    
 </p>
@@ -429,7 +430,7 @@ var builder = require('@jenkins-cd/js-builder');
 builder.bundle('src/main/js/rollbar.js');
 ```
 
-This `gulpfile.js` can be deleted and the bundling command moved to the `jenkinscd.bundle` section of the package.json` e.g.
+This `gulpfile.js` can be deleted and the bundling command moved to the `jenkinscd.bundle` section of the `package.json` e.g.
 
 ```
 {
