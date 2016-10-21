@@ -18,7 +18,7 @@ if (esLintConfig) {
 
 exports.exec = function(langConfig, lintConfig) {
     if (lintConfig.level === 'none') {
-        logger.logInfo('Code linting is disabled.');
+        logger.logInfo('Code linting is disabled. Check gulpfile.js.');
         return;
     }
 

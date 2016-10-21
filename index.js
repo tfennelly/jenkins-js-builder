@@ -667,6 +667,11 @@ var tasks = {
     }
 };
 
+gulp.task('lint:watch', function () {
+    var watchList = buildSrcWatchList(true);
+    gulp.watch(watchList, ['lint']);
+});
+
 function skipBundle() {
     // Can't skip bundle if there are handlebars file and a dependency on hbsify
     if (dependencies.getDependency('hbsfy') && paths.hasSourceFiles('hbs')) {
