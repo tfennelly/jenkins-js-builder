@@ -455,7 +455,7 @@ installing `js-builder` globally (which you would not want to require for e.g. a
     "bundle": "jjsbuilder --tasks bundle",
     "test": "jjsbuilder --tasks test",
     "lint": "jjsbuilder --tasks lint",
-    "fixlint": "jjsbuilder --tasks lint --fixLint",
+    "lint:fix": "jjsbuilder --tasks lint --fixLint",
     "bundle:watch": "jjsbuilder --tasks bundle:watch",
     "mvnbuild": "jjsbuilder --tasks bundle",
     "mvntest": "jjsbuilder --tasks test,lint"

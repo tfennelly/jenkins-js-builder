@@ -5,6 +5,11 @@
  * Installed as command "jjsbuilder".
  */
 
+// Prepend the local node_modules to NODE_PATH so as to
+// pick up peer deps. Will not work otherwise.
+const path = require('path');
+process.env.NODE_PATH='./node_modules' + path.delimiter + process.env.NODE_PATH;
+
 var args = require('./internal/args');
 var fs = require('fs');
 var cwd = process.cwd();
