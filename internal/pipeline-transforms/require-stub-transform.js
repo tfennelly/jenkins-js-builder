@@ -12,24 +12,25 @@ var logger = require('../logger');
 var node_modules_path = process.cwd() + '/node_modules/';
 var args = require('../args');
 
-function pipelingPlugin(moduleMappings) {
-    return through.obj(function (bundle, encoding, callback) {
-        if (!(bundle instanceof Buffer)) {
+function pipelingPlugin(bundlingConfig) {
+    return through.obj(function (rawBundle, encoding, callback) {
+        if (!(rawBundle instanceof Buffer)) {
             callback(new Error('Sorry, this transform only supports Buffers.'));
             return;
         }
 
-        var bundleContent = bundle.toString('utf8');
+        var bundleContent = rawBundle.toString('utf8');
         var packEntries  = unpack(bundleContent);
 
-        updateBundleStubs(packEntries, moduleMappings);
+        updateBundleStubs(packEntries, bundlingConfig);
 
         this.push(JSON.stringify(packEntries));
         callback();
     });
 }
 
-function updateBundleStubs(packEntries, moduleMappings) {
+function updateBundleStubs(packEntries, bundlingConfig) {
+    var moduleMappings = bundlingConfig.moduleMappings;
     var metadata = extractBundleMetadata(packEntries);
     var jsModulesModuleDef = metadata.getPackEntriesByName('@jenkins-cd/js-modules');
 

@@ -34,6 +34,7 @@ exports.bundleFor = function(builder, packageName) {
         builder.bundle(bundleSrc, packageName + '@' + installedVersion.asBaseVersionString())
             .inDir(inDir)
             .ignoreGlobalExportMappings()
+            .doIgnoreMissing()
             .noEmptyModuleExport();
     } else {
         // The bundle has already been generated. No need to do it again.

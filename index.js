@@ -318,6 +318,7 @@ function bundleJs(moduleToBundle, as) {
     bundle.exportEmptyModule = true;
     bundle.useGlobalImportMappings = true;
     bundle.useGlobalExportMappings = true;
+    bundle.ignoreMissing = false;
     bundle.minifyBundle = args.isArgvSpecified('--minify');
     bundle.generateNoImportsBundle = function() {
         if (skipBundle) {
@@ -372,7 +373,12 @@ function bundleJs(moduleToBundle, as) {
         bundle.useGlobalExportMappings = false;
         return bundle;
     };
-    
+
+    bundle.doIgnoreMissing = function() {
+        bundle.ignoreMissing = true;
+        return bundle;
+    };
+
     bundle.noEmptyModuleExport = function() {
         bundle.exportEmptyModule = false;
         return bundle;

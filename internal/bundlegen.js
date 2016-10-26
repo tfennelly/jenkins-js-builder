@@ -128,7 +128,7 @@ exports.doJSBundle = function(bundle, applyImports) {
         extensions: ['.js', '.es6', '.jsx', '.hbs'],
         cache: {},
         packageCache: {},
-        ignoreMissing: true,
+        ignoreMissing: bundle.ignoreMissing,
         fullPaths: true
     };
     
@@ -217,7 +217,7 @@ exports.doJSBundle = function(bundle, applyImports) {
         var pack = require('browser-pack');
 
         bundleOutput = bundleOutput.pipe(bufferedTextTransform())// gathers together all the bundle JS, preparing for the next pipeline stage
-            .pipe(requireStubTransform.pipelinePlugin(bundle.moduleMappings)) // transform the require stubs
+            .pipe(requireStubTransform.pipelinePlugin(bundle)) // transform the require stubs
             .pipe(pack()); // repack the bundle after the previous transform
     }
 

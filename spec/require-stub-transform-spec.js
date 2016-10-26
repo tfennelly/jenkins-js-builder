@@ -7,7 +7,7 @@ describe("require-stub-transform", function () {
 
     it("- test no mappings", function (done) {
         buildBrowserPack('module1.js', function (packEntries) {
-            var metadata = transformModule.updateBundleStubs(packEntries, []);
+            var metadata = transformModule.updateBundleStubs(packEntries, {moduleMappings: []});
 
             //logMetadata(metadata);
 
@@ -33,7 +33,7 @@ describe("require-stub-transform", function () {
             // that stubbing it out should not really have any effect other
             // than a rewrite of it's source to get the module from js-modules.
             // See the dependency graph illustration in module1.js
-            var metadata = transformModule.updateBundleStubs(packEntries, [{from: './module6', to: 'mod6:mod6v2'}]);
+            var metadata = transformModule.updateBundleStubs(packEntries, {moduleMappings: [{from: './module6', to: 'mod6:mod6v2'}]});
 
             //logMetadata(metadata);
 
@@ -67,7 +67,7 @@ describe("require-stub-transform", function () {
             // should also result in module8/9 being removed from the bundle
             // because they are no longer in use.
             // See the dependency graph illustration in module1.js
-            var metadata = transformModule.updateBundleStubs(packEntries, [{from: './module7', to: 'mod7:mod6v2'}]);
+            var metadata = transformModule.updateBundleStubs(packEntries, {moduleMappings: [{from: './module7', to: 'mod7:mod6v2'}]});
 
             // We should have defs for all modules except module8.
             expect(getPackEntryByName(metadata, './module2')).toBeDefined();
@@ -93,7 +93,7 @@ describe("require-stub-transform", function () {
             // have a dependants (module5) so should not be removed from
             // the bundle.
             // See the dependency graph illustration in module1.js
-            var metadata = transformModule.updateBundleStubs(packEntries, [{from: './module2', to: 'mod2:mod6v2'}]);
+            var metadata = transformModule.updateBundleStubs(packEntries, {moduleMappings: [{from: './module2', to: 'mod2:mod6v2'}]});
 
             // We should have defs for all modules except module4.
             expect(getPackEntryByName(metadata, './module2')).toBeDefined();
@@ -120,10 +120,10 @@ describe("require-stub-transform", function () {
             // removed from the bundle, which in turn should result in module6 being removed
             // because it is no longer in use.
             // See the dependency graph illustration in module1.js
-            var metadata = transformModule.updateBundleStubs(packEntries, [
+            var metadata = transformModule.updateBundleStubs(packEntries, {moduleMappings: [
                 {from: './module2', to: 'mod2:mod6v2'},
                 {from: './module3', to: 'mod3:mod6v2'}
-            ]);
+            ]});
 
             // We should have defs for all modules except module4, module5 and module6.
             expect(getPackEntryByName(metadata, './module2')).toBeDefined();
@@ -142,7 +142,7 @@ describe("require-stub-transform", function () {
 
     it("- test browserify dedupe - JENKINS-37714", function (done) {
         buildBrowserPack('dedupe-main.js', function (packEntries) {
-                        var metadata = transformModule.updateBundleStubs(packEntries, []);
+                        var metadata = transformModule.updateBundleStubs(packEntries, {moduleMappings: []});
 
             // We should have defs for all modules except module4, module5 and module6.
             var dedupeOnePackEntry = getPackEntryByName(metadata, './dedupe-one');
