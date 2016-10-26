@@ -37,7 +37,7 @@
     "browser-unpack": "^1.1.1",
     "browserify": "^12.0.1",
     "browserify-transform-tools": "^1.4.2",
-    "browserify-tree": "0.0.2",
+    "browserify-tree": "0.0.5",
     "decamelize": "^1.2.0",
     "eslint": "^2.2.0",
     "glob": "^7.0.0",

@@ -53,17 +53,6 @@ function generateBundleSrc(extVersionMetadata) {
     var srcContent = '';
     var jsFiles = [];
 
-    function isBundleable(jsFile) {
-        // let's make sure it's a bundleable commonjs module
-        try {
-            var result = child_process.spawnSync('./node_modules/.bin/browserify', [jsFile]);
-            return (result.status === 0);
-        } catch (e) {
-            // ignore that file
-        }
-        return false;
-    }
-
     paths.walkDirs(packageDir, function(dir) {
         var relDirPath = dir.replace(packageDir, '');
 
@@ -83,9 +72,7 @@ function generateBundleSrc(extVersionMetadata) {
             for (var i = 0; i < files.length; i++) {
                 var file = files[i];
                 if (file.endsWith('.js') || file.endsWith('.jsx')) {
-                    if (isBundleable(dir + '/' + file)) {
-                        jsFiles.push(packageName + '/' + relDirPath + file);
-                    }
+                    jsFiles.push(packageName + '/' + relDirPath + file);
                 }
             }
         }

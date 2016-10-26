@@ -94,16 +94,26 @@ function updateBundleStubs(packEntries, moduleMappings) {
         }
     }
 
-    // Scan the bundle again now and remove all unused stragglers.
+    // Scan the bundle and remove all unused stragglers.
     const unusedModules = browserifyTree.getUnusedModules(metadata.packEntries);
     unusedModules.forEach(function(moduleId) {
         removePackEntryById(metadata, moduleId);
     });
-    
+    // Scan the bundle and remove all unloadable stragglers.
+    const unloadableModules = browserifyTree.getUnloadableModules(metadata.packEntries);
+    unloadableModules.forEach(function(moduleId) {
+        var packEntry = metadata.getPackEntryById(moduleId);
+        packEntry.source = "throw new Error('Unloadable module: " + moduleId + ".');";
+    });
+
     if (!args.isArgvSpecified('--full-paths')) {
         metadata = fullPathsToIds(metadata);
     }
-    
+
+    metadata.packEntries.forEach(function(packEntry) {
+        packEntry.source = "try {\n" + packEntry.source + "\n} catch(e) {}";
+    });
+
     // Keeping as it's handy for debug purposes.
     //require('fs').writeFileSync('./target/bundlepack.json', JSON.stringify(packEntries, undefined, 4));
     

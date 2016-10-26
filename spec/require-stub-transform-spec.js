@@ -51,7 +51,7 @@ describe("require-stub-transform", function () {
             var module6PackEntry = getPackEntryByName(metadata, './module6');
             expect(module6PackEntry).toBeDefined();
             // The source should just be the js-modules require ...
-            expect(module6PackEntry.source).toBe("module.exports = require('@jenkins-cd/js-modules').requireModule('mod6:mod6v2');");
+            expect(module6PackEntry.source).toBe("try {\nmodule.exports = require('@jenkins-cd/js-modules').requireModule('mod6:mod6v2');\n} catch(e) {}");
             // Should only depend on js-modules ...
             expect(countDependencies(module6PackEntry)).toBe(1);
             expect(module6PackEntry.deps['@jenkins-cd/js-modules']).toBeDefined();
@@ -156,7 +156,7 @@ describe("require-stub-transform", function () {
             // The contents of both these modules are identical, causing browserify
             // to optimize by pointing dedupeTwoPackEntry to just point to dedupeOnePackEntry.
             // We ant to check that the module id was properly translated.
-            expect(dedupeTwoPackEntry.source).toBe('arguments[4][' + dedupeOnePackEntry.id + '][0].apply(exports,arguments)');
+            expect(dedupeTwoPackEntry.source).toBe('try {\narguments[4][' + dedupeOnePackEntry.id + '][0].apply(exports,arguments)\n} catch(e) {}');
 
             done()
         });

@@ -128,6 +128,7 @@ exports.doJSBundle = function(bundle, applyImports) {
         extensions: ['.js', '.es6', '.jsx', '.hbs'],
         cache: {},
         packageCache: {},
+        ignoreMissing: true,
         fullPaths: true
     };
     
