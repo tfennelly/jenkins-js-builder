@@ -100,20 +100,29 @@ function updateBundleStubs(packEntries, bundlingConfig) {
     unusedModules.forEach(function(moduleId) {
         removePackEntryById(metadata, moduleId);
     });
-    // Scan the bundle and remove all unloadable stragglers.
-    const unloadableModules = browserifyTree.getUnloadableModules(metadata.packEntries);
-    unloadableModules.forEach(function(moduleId) {
-        var packEntry = metadata.getPackEntryById(moduleId);
-        packEntry.source = "throw new Error('Unloadable module: " + moduleId + ".');";
-    });
+
+    // If we are ignoring missing/unresolvable modules, then
+    // scan the bundle and remove all unloadables.
+    if (bundlingConfig.ignoreMissing) {
+        const unloadableModules = browserifyTree.getUnloadableModules(metadata.packEntries);
+        unloadableModules.forEach(function(moduleId) {
+            var packEntry = metadata.getPackEntryById(moduleId);
+            packEntry.source = "throw new Error('Unloadable module: " + moduleId + ".');";
+        });
+    }
 
     if (!args.isArgvSpecified('--full-paths')) {
         metadata = fullPathsToIds(metadata);
     }
 
-    metadata.packEntries.forEach(function(packEntry) {
-        packEntry.source = "try {\n" + packEntry.source + "\n} catch(e) {}";
-    });
+    // If we're ignoring missing/unresolvable, then also wrap each
+    // entry source in a try catch so that ReferenceErrors etc do not
+    // result in an unloadable bundle.
+    if (bundlingConfig.ignoreMissing) {
+        metadata.packEntries.forEach(function(packEntry) {
+            packEntry.source = "try {\n" + packEntry.source + "\n} catch(e) {}";
+        });
+    }
 
     // Keeping as it's handy for debug purposes.
     //require('fs').writeFileSync('./target/bundlepack.json', JSON.stringify(packEntries, undefined, 4));
