@@ -102,7 +102,8 @@ exports.processExternalizedDependencies = function(builder) {
  * @param depPackageName The NPM dependency package name.
  */
 exports.externalizedVersionMetadata = function(depPackageName) {
-    var packageJsonFile = cwd + '/node_modules/' + depPackageName + '/package.json';
+    var packageDir = cwd + '/node_modules/' + depPackageName;
+    var packageJsonFile = packageDir + '/package.json';
     
     if (!fs.existsSync(packageJsonFile)) {
         return undefined;
@@ -118,6 +119,7 @@ exports.externalizedVersionMetadata = function(depPackageName) {
     }
 
     metadata.packageName = depPackageName;
+    metadata.packageDir = packageDir;
     metadata.installedVersion = new Version(packageJson.version);
     metadata.depVersion = new Version(declaredDepVersion.version);
     metadata.normalizedPackageName = exports.normalizePackageName(depPackageName);

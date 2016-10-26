@@ -7,6 +7,7 @@ var ModuleSpec = require('@jenkins-cd/js-modules/js/ModuleSpec');
 var cwd = process.cwd();
 var templates = require('./templates');
 var exportModuleTemplate = templates.getTemplate('export-module.hbs');
+var child_process = require('child_process');
 
 exports.bundleFor = function(builder, packageName) {
     var packageSpec = new ModuleSpec(packageName);
@@ -37,7 +38,7 @@ exports.bundleFor = function(builder, packageName) {
     } else {
         // The bundle has already been generated. No need to do it again.
         // For linked modules ... do an rm -rf of the target dir ... sorry :)
-        logger.logInfo('Bundle for "' + packageName + '" already created. Delete "target" directory ad run bundle again to recreate.');
+        logger.logInfo('Bundle for "' + packageName + '" already created. Delete "target" directory and run bundle again to recreate.');
     }
 
     return extVersionMetadata.importAs();
@@ -45,10 +46,50 @@ exports.bundleFor = function(builder, packageName) {
 
 function generateBundleSrc(extVersionMetadata) {
     var packageName = extVersionMetadata.packageName;
+    var packageDir = extVersionMetadata.packageDir;
     var normalizedPackageName = extVersionMetadata.normalizedPackageName;
     var jsModuleNames = extVersionMetadata.jsModuleNames;
     var depVersion = extVersionMetadata.depVersion;
     var srcContent = '';
+    var jsFiles = [];
+
+    function isBundleable(jsFile) {
+        // let's make sure it's a bundleable commonjs module
+        try {
+            var result = child_process.spawnSync('./node_modules/.bin/browserify', [jsFile]);
+            return (result.status === 0);
+        } catch (e) {
+            // ignore that file
+        }
+        return false;
+    }
+
+    paths.walkDirs(packageDir, function(dir) {
+        var relDirPath = dir.replace(packageDir, '');
+
+        // Do not go into the node_modules dir
+        if (relDirPath === '/node_modules') {
+            return false;
+        } else if (relDirPath.charAt(0) === '/') {
+            relDirPath = relDirPath.substring(1);
+        }
+
+        if (relDirPath.length > 0) {
+            relDirPath += '/';
+        }
+
+        var files = fs.readdirSync(dir);
+        if (files) {
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                if (file.endsWith('.js') || file.endsWith('.jsx')) {
+                    if (isBundleable(dir + '/' + file)) {
+                        jsFiles.push(packageName + '/' + relDirPath + file);
+                    }
+                }
+            }
+        }
+    });
 
     srcContent += "//\n";
     srcContent += "// NOTE: This file is generated and should NOT be added to source control.\n";
@@ -57,7 +98,8 @@ function generateBundleSrc(extVersionMetadata) {
     srcContent += exportModuleTemplate({
         packageName: packageName,
         normalizedPackageName: normalizedPackageName,
-        jsModuleNames: jsModuleNames
+        jsModuleNames: jsModuleNames,
+        jsFiles: jsFiles
     });
     
     var bundleSrcDir = 'target/js-bundle-src';

@@ -1,5 +1,9 @@
 var jsModules = require('@jenkins-cd/js-modules');
 
+{{#each jsFiles}}
+require('{{this}}');
+{{/each}}
+
 jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.patch}}', require('{{packageName}}'));
 jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.minor}}', require('{{packageName}}'));
 jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.major}}', require('{{packageName}}'));
