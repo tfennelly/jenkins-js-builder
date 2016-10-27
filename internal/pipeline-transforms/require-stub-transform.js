@@ -122,7 +122,7 @@ function updateBundleStubs(packEntries, bundlingConfig) {
     // result in an unloadable bundle.
     if (bundlingConfig.ignoreMissing) {
         metadata.packEntries.forEach(function(packEntry) {
-            packEntry.source = "try {\n" + packEntry.source + "\n} catch(e) {}";
+            packEntry.source = "try {\n" + packEntry.source + "\n} catch(e) { if (require.___jenkins_bundle_loaded) { throw e; } }";
         });
     }
 

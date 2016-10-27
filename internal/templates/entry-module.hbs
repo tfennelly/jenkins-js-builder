@@ -42,6 +42,7 @@ function ___$$$___doBundleInit() {
         ___$$$___exec();
         ___$$$___doExports();
         ___$$$___doCSS();
+        require.___jenkins_bundle_loaded = true;
     } catch (e) {
         console.error('Error initializing Jenkins JavaScript bundle "{{bundle.as}}"', e);
     }
