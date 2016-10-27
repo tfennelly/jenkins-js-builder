@@ -160,7 +160,11 @@ function getPackageFiles(extVersionMetadata) {
     jsFiles = [installedVersion].concat(jsFiles);
 
     // And cache the list in the source tree so we can use it later.
-    paths.mkdirp(packagesDir);
+    if (!fs.existsSync(packagesDir)) {
+        paths.mkdirp(packagesDir);
+        // Write a simple readme.
+        fs.writeFileSync(packagesDir + '/README.md', fs.readFileSync(__dirname + '/templates/npm-packages.md', 'utf8'), 'utf8');
+    }
     fs.writeFileSync(packageFilesFile, JSON.stringify(jsFiles, undefined, 2), 'utf8');
 
     return jsFiles;
