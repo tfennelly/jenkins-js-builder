@@ -84,20 +84,21 @@ function generateBundleSrc(extVersionMetadata) {
 function getPackageFiles(extVersionMetadata) {
     var packageName = extVersionMetadata.packageName;
     var packageDir = extVersionMetadata.packageDir;
+    var installedVersion = extVersionMetadata.installedVersion.raw;
     var packagesDir = './npm-packages/';
 
     // Resolving this list of files can be heavy duty so we do not want to be doing it
     // for every run of the build. For that reason, we keep a record of them as part of
     // the source. Lets see if we have that and if it's the right version etc.
     // Generate/regenerate if not.
-    var packageFilesFile = packagesDir + extVersionMetadata.normalizedPackageName;
+    var packageFilesFile = packagesDir + extVersionMetadata.normalizedPackageName + '.json';
     if (fs.existsSync(packageFilesFile)) {
         var packageFilesFileList = JSON.parse(fs.readFileSync(packageFilesFile, 'utf8'));
 
         // The first entry in the list is the version. We use a list so as to maintain
         // order Vs having weird diffs as can happen if using a map.
         var version = packageFilesFileList[0];
-        if (version === extVersionMetadata.installedVersion.raw) {
+        if (version === installedVersion) {
             // Same version, therefore we can use this list i.e. no need to go through
             // the possibly lengthy process of figuring it out.
             return packageFilesFileList;
@@ -111,10 +112,6 @@ function getPackageFiles(extVersionMetadata) {
 
     // Okay, we need to figure it out.
     var jsFiles = [];
-
-    // Add the version as the first entry in the list. See block above and how
-    // this is used in subsequent build.
-    jsFiles.push(extVersionMetadata.installedVersion.raw);
 
     function isBundleable(jsFile) {
         // let's make sure it's a bundleable commonjs module
@@ -153,6 +150,14 @@ function getPackageFiles(extVersionMetadata) {
             }
         }
     });
+
+    // Sort the files so as to ensure they always appear in the same order
+    // in the source, maintaining diffs.
+    jsFiles.sort();
+
+    // Add the version as the first entry in the list. See earlier block and how
+    // this is used in subsequent builds.
+    jsFiles = [installedVersion].concat(jsFiles);
 
     // And cache the list in the source tree so we can use it later.
     paths.mkdirp(packagesDir);
