@@ -55,6 +55,11 @@ function generateBundleSrc(extVersionMetadata) {
     var jsFiles = getPackageFiles(extVersionMetadata);
     var srcContent = '';
 
+    // remove the first entry in the list because it's actually
+    // the package version. It's there because it needs to get serialized
+    // and we did not add it as a property simply so as to keep diffs simple.
+    jsFiles.shift();
+
     srcContent += "//\n";
     srcContent += "// NOTE: This file is generated and should NOT be added to source control.\n";
     srcContent += "//\n";
@@ -79,7 +84,37 @@ function generateBundleSrc(extVersionMetadata) {
 function getPackageFiles(extVersionMetadata) {
     var packageName = extVersionMetadata.packageName;
     var packageDir = extVersionMetadata.packageDir;
+    var packagesDir = './npm-packages/';
+
+    // Resolving this list of files can be heavy duty so we do not want to be doing it
+    // for every run of the build. For that reason, we keep a record of them as part of
+    // the source. Lets see if we have that and if it's the right version etc.
+    // Generate/regenerate if not.
+    var packageFilesFile = packagesDir + extVersionMetadata.normalizedPackageName;
+    if (fs.existsSync(packageFilesFile)) {
+        var packageFilesFileList = JSON.parse(fs.readFileSync(packageFilesFile, 'utf8'));
+
+        // The first entry in the list is the version. We use a list so as to maintain
+        // order Vs having weird diffs as can happen if using a map.
+        var version = packageFilesFileList[0];
+        if (version === extVersionMetadata.installedVersion.raw) {
+            // Same version, therefore we can use this list i.e. no need to go through
+            // the possibly lengthy process of figuring it out.
+            return packageFilesFileList;
+        }
+        logger.logInfo('*** Regenerating NPM package list file ' + packageFilesFile);
+    } else {
+        logger.logInfo('*** Generating NPM package list file ' + packageFilesFile);
+    }
+    logger.logInfo('\tthis can take a bit of time so sit tight !!! ...');
+    logger.logInfo('\t(once completed, be sure to commit the file to source)');
+
+    // Okay, we need to figure it out.
     var jsFiles = [];
+
+    // Add the version as the first entry in the list. See block above and how
+    // this is used in subsequent build.
+    jsFiles.push(extVersionMetadata.installedVersion.raw);
 
     function isBundleable(jsFile) {
         // let's make sure it's a bundleable commonjs module
@@ -118,6 +153,10 @@ function getPackageFiles(extVersionMetadata) {
             }
         }
     });
+
+    // And cache the list in the source tree so we can use it later.
+    paths.mkdirp(packagesDir);
+    fs.writeFileSync(packageFilesFile, JSON.stringify(jsFiles, undefined, 2), 'utf8');
 
     return jsFiles;
 }

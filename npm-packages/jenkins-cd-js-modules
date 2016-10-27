@@ -1,0 +1,8 @@
+[
+  "0.0.8",
+  "@jenkins-cd/js-modules/js/ModuleSpec.js",
+  "@jenkins-cd/js-modules/js/Version.js",
+  "@jenkins-cd/js-modules/js/index.js",
+  "@jenkins-cd/js-modules/js/internal.js",
+  "@jenkins-cd/js-modules/js/promise.js"
+]
