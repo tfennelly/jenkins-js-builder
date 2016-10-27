@@ -9,6 +9,8 @@ var templates = require('./templates');
 var exportModuleTemplate = templates.getTemplate('export-module.hbs');
 var child_process = require('child_process');
 
+exports.INTERNAL_REQUIRE_FUNC_NAME = '___jenkins_internalJsRequire';
+
 exports.bundleFor = function(builder, packageName) {
     var packageSpec = new ModuleSpec(packageName);
 
@@ -87,7 +89,8 @@ function generateBundleSrc(extVersionMetadata) {
         packageName: packageName,
         normalizedPackageName: normalizedPackageName,
         jsModuleNames: jsModuleNames,
-        jsFiles: jsFiles
+        jsFiles: jsFiles,
+        internalRequireFuncName: exports.INTERNAL_REQUIRE_FUNC_NAME
     });
     
     var bundleSrcDir = 'target/js-bundle-src';

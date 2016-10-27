@@ -12,6 +12,8 @@ var logger = require('../logger');
 var node_modules_path = process.cwd() + '/node_modules/';
 var args = require('../args');
 
+var NODE_MODULES_DIR = process.cwd() + '/node_modules/';
+
 function pipelingPlugin(bundlingConfig) {
     return through.obj(function (rawBundle, encoding, callback) {
         if (!(rawBundle instanceof Buffer)) {
@@ -107,7 +109,7 @@ function updateBundleStubs(packEntries, bundlingConfig) {
         const unloadableModules = browserifyTree.getUnloadableModules(metadata.packEntries);
         unloadableModules.forEach(function(moduleId) {
             var packEntry = metadata.getPackEntryById(moduleId);
-            packEntry.source = "throw new Error('Unloadable module: " + moduleId + ".');";
+            packEntry.source = "throw new Error('Unloadable module: " + moduleId.replace(NODE_MODULES_DIR, '') + ".');";
         });
     }
 

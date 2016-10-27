@@ -1,10 +1,19 @@
 var jsModules = require('@jenkins-cd/js-modules');
 
+// Require all the .js and .jsx resources in the package, forcing them
+// to be added to the generated bundle.
 {{#each jsFiles}}
 require('{{this}}');
 {{/each}}
 
-jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.patch}}', require('{{packageName}}'));
-jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.minor}}', require('{{packageName}}'));
-jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.major}}', require('{{packageName}}'));
-jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.any}}', require('{{packageName}}'));
+// Add an "internal" require function on the exported module.
+// Bundles will use this to require resources inside the package.
+var exportModule = require('{{packageName}}');
+exportModule.{{internalRequireFuncName}} = function(internalJsResource) {
+    return require('{{packageName}}/' + internalJsResource);
+};
+
+jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.patch}}', exportModule);
+jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.minor}}', exportModule);
+jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.major}}', exportModule);
+jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.any}}', exportModule);
