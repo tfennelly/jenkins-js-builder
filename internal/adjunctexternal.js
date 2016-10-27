@@ -49,37 +49,11 @@ exports.bundleFor = function(builder, packageName) {
 
 function generateBundleSrc(extVersionMetadata) {
     var packageName = extVersionMetadata.packageName;
-    var packageDir = extVersionMetadata.packageDir;
     var normalizedPackageName = extVersionMetadata.normalizedPackageName;
     var jsModuleNames = extVersionMetadata.jsModuleNames;
     var depVersion = extVersionMetadata.depVersion;
+    var jsFiles = getPackageFiles(extVersionMetadata);
     var srcContent = '';
-    var jsFiles = [];
-
-    paths.walkDirs(packageDir, function(dir) {
-        var relDirPath = dir.replace(packageDir, '');
-
-        // Do not go into the node_modules dir
-        if (relDirPath === '/node_modules') {
-            return false;
-        } else if (relDirPath.charAt(0) === '/') {
-            relDirPath = relDirPath.substring(1);
-        }
-
-        if (relDirPath.length > 0) {
-            relDirPath += '/';
-        }
-
-        var files = fs.readdirSync(dir);
-        if (files) {
-            for (var i = 0; i < files.length; i++) {
-                var file = files[i];
-                if (file.endsWith('.js') || file.endsWith('.jsx')) {
-                    jsFiles.push(packageName + '/' + relDirPath + file);
-                }
-            }
-        }
-    });
 
     srcContent += "//\n";
     srcContent += "// NOTE: This file is generated and should NOT be added to source control.\n";
@@ -100,4 +74,50 @@ function generateBundleSrc(extVersionMetadata) {
     var bundleSrcFile = bundleSrcDir + '/' + jsModuleNames.filenameFor(depVersion) + '.js';
     fs.writeFileSync(cwd +  '/' + bundleSrcFile, srcContent);
     return bundleSrcFile;
+}
+
+function getPackageFiles(extVersionMetadata) {
+    var packageName = extVersionMetadata.packageName;
+    var packageDir = extVersionMetadata.packageDir;
+    var jsFiles = [];
+
+    function isBundleable(jsFile) {
+        // let's make sure it's a bundleable commonjs module
+        try {
+            var result = child_process.spawnSync('./node_modules/.bin/browserify', [jsFile]);
+            return (result.status === 0);
+        } catch (e) {
+            // ignore that file
+        }
+        return false;
+    }
+
+    paths.walkDirs(packageDir, function(dir) {
+        var relDirPath = dir.replace(packageDir, '');
+
+        // Do not go into the node_modules dir
+        if (relDirPath === '/node_modules') {
+            return false;
+        } else if (relDirPath.charAt(0) === '/') {
+            relDirPath = relDirPath.substring(1);
+        }
+
+        if (relDirPath.length > 0) {
+            relDirPath += '/';
+        }
+
+        var files = fs.readdirSync(dir);
+        if (files) {
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                if (file.endsWith('.js') || file.endsWith('.jsx')) {
+                    if (isBundleable(dir + '/' + file)) {
+                        jsFiles.push(packageName + '/' + relDirPath + file);
+                    }
+                }
+            }
+        }
+    });
+
+    return jsFiles;
 }
