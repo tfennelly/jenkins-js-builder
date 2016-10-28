@@ -51,7 +51,7 @@ describe("require-stub-transform", function () {
             var module6PackEntry = getPackEntryByName(metadata, './module6');
             expect(module6PackEntry).toBeDefined();
             // The source should just be the js-modules require ...
-            expect(module6PackEntry.source).toBe("try {\nmodule.exports = require('@jenkins-cd/js-modules').requireModule('mod6:mod6v2');\n} catch(e) { if (require.___jenkins_bundle_loaded) { throw e; } }");
+            expect(module6PackEntry.source).toBe("try {\nvar entryModule = require('@jenkins-cd/js-modules').requireModule('mod6:mod6v2');\nif (entryModule.___jenkins_entry) {\n    module.exports = entryModule.___jenkins_entry;\n} else {\n    module.exports = entryModule;\n}\n\n} catch(e) { if (require.___jenkins_bundle_loaded) { throw e; } }");
             // Should only depend on js-modules ...
             expect(countDependencies(module6PackEntry)).toBe(1);
             expect(module6PackEntry.deps['@jenkins-cd/js-modules']).toBeDefined();

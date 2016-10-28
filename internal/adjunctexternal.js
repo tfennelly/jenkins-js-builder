@@ -9,6 +9,7 @@ var templates = require('./templates');
 var exportModuleTemplate = templates.getTemplate('export-module.hbs');
 var child_process = require('child_process');
 
+exports.ENTRY_MODULE_PROP_NAME = '___jenkins_entry';
 exports.INTERNAL_REQUIRE_FUNC_NAME = '___jenkins_internalJsRequire';
 
 exports.bundleFor = function(builder, packageName) {
@@ -69,6 +70,7 @@ function generateBundleSrc(extVersionMetadata) {
         normalizedPackageName: normalizedPackageName,
         jsModuleNames: jsModuleNames,
         jsFiles: jsFiles,
+        entryModulePropName: exports.ENTRY_MODULE_PROP_NAME,
         internalRequireFuncName: exports.INTERNAL_REQUIRE_FUNC_NAME
     });
     

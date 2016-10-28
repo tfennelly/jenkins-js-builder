@@ -11,6 +11,9 @@ var ModuleSpec = require('@jenkins-cd/js-modules/js/ModuleSpec');
 var logger = require('../logger');
 var node_modules_path = process.cwd() + '/node_modules/';
 var args = require('../args');
+var adjunctexternal = require('../adjunctexternal');
+var templates = require('../templates');
+var moduleRequireTemplate = templates.getTemplate('module-require.hbs');
 
 var NODE_MODULES_DIR = process.cwd() + '/node_modules/';
 
@@ -45,14 +48,12 @@ function updateBundleStubs(packEntries, bundlingConfig) {
         for (var i = 0; i < moduleMappings.length; i++) {
             var moduleMapping = moduleMappings[i];
             var toSpec = new ModuleSpec(moduleMapping.to);
-            var importAs = toSpec.importAs();
-            var newSource = "module.exports = require('@jenkins-cd/js-modules').requireModule('" + importAs + "');";
 
             if (!moduleMapping.fromSpec) {
                 moduleMapping.fromSpec = new ModuleSpec(moduleMapping.from);
             }
             
-            mapByPackageName(moduleMapping.fromSpec.moduleName, newSource);
+            mapByPackageName(moduleMapping.fromSpec.moduleName, toSpec.importAs());
             
             // And check are there aliases that can be mapped...
             if (moduleMapping.config && moduleMapping.config.aliases) {
@@ -64,16 +65,35 @@ function updateBundleStubs(packEntries, bundlingConfig) {
         }
     }
 
-    function mapByPackageName(moduleName, newSource) {
-        var mappedPackEntries = metadata.getPackEntriesByName(moduleName);
-        if (mappedPackEntries.length === 1) {
-            setPackSource(mappedPackEntries[0], newSource);
-        } else if (mappedPackEntries.length > 1) {
-            logger.logWarn('Cannot map module "' + moduleName + '". Multiple bundle map entries are known by this name (in different contexts).');
-        } else {
-            // This can happen if the pack with that ID was already removed
-            // because it's no longer being used (has nothing depending on it).
-            // See removeDependant and how it calls removePackEntryById.
+    function mapByPackageName(moduleName, importAs) {
+        for (var i = 0; i < metadata.packEntries.length; i++) {
+            var packEntry = metadata.packEntries[i];
+            var packId = packEntry.id;
+            var trimmedPackId = packId.replace(NODE_MODULES_DIR, '');
+
+            if (trimmedPackId === moduleName || trimmedPackId.indexOf(moduleName + '/') === 0) {
+                var sourceGenParams = {
+                    importAs: importAs,
+                    entryModulePropName: adjunctexternal.ENTRY_MODULE_PROP_NAME
+                };
+
+                if (trimmedPackId !== moduleName) {
+                    sourceGenParams.moduleName = trimmedPackId;
+                    sourceGenParams.internalRequireFuncName = adjunctexternal.INTERNAL_REQUIRE_FUNC_NAME;
+                }
+
+                var newSource = moduleRequireTemplate(sourceGenParams);
+                setPackSource(packEntry, newSource);
+            } else {
+                var modulesDef = metadata.getModuleDefById(packId);
+                if (modulesDef && modulesDef.isKnownAs(moduleName)) {
+                    var newSource = moduleRequireTemplate({
+                        importAs: importAs,
+                        entryModulePropName: adjunctexternal.ENTRY_MODULE_PROP_NAME
+                    });
+                    setPackSource(packEntry, newSource);
+                }
+            }
         }
     }
     function mapByNodeModulesPath(node_modules_path, newSource) {
