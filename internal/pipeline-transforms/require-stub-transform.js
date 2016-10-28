@@ -19,7 +19,7 @@ var doImportPackEntrySource = templates.getTemplate('doImport-pack-entry-source.
 var NODE_MODULES_DIR = process.cwd() + '/node_modules/';
 var DO_IMPORT_PACK_ENTRY_ID = '____jenkins_doImport';
 
-function pipelingPlugin(bundlingConfig) {
+function pipelinePlugin(bundlingConfig) {
     return through.obj(function (rawBundle, encoding, callback) {
         if (!(rawBundle instanceof Buffer)) {
             callback(new Error('Sorry, this transform only supports Buffers.'));
@@ -452,5 +452,5 @@ function listAllModuleNames(modulesDefs) {
     return names;
 }
 
-exports.pipelinePlugin = pipelingPlugin;
+exports.pipelinePlugin = pipelinePlugin;
 exports.updateBundleStubs = updateBundleStubs;
