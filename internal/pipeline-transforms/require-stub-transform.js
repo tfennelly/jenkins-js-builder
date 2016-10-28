@@ -14,8 +14,10 @@ var args = require('../args');
 var adjunctexternal = require('../adjunctexternal');
 var templates = require('../templates');
 var moduleRequireTemplate = templates.getTemplate('module-require.hbs');
+var doImportPackEntrySource = templates.getTemplate('doImport-pack-entry-source.hbs');
 
 var NODE_MODULES_DIR = process.cwd() + '/node_modules/';
+var DO_IMPORT_PACK_ENTRY_ID = '____jenkins_doImport';
 
 function pipelingPlugin(bundlingConfig) {
     return through.obj(function (rawBundle, encoding, callback) {
@@ -63,6 +65,19 @@ function updateBundleStubs(packEntries, bundlingConfig) {
                 }
             }
         }
+
+        // Add the doImport pack entry to the bundle.
+        var doImportPackEntry = {
+            id: DO_IMPORT_PACK_ENTRY_ID,
+            source: doImportPackEntrySource({
+                internalRequireFuncName: adjunctexternal.INTERNAL_REQUIRE_FUNC_NAME,
+                entryModulePropName: adjunctexternal.ENTRY_MODULE_PROP_NAME
+            }),
+            deps: {
+                '@jenkins-cd/js-modules': jsModulesModuleDef[0].id
+            }
+        };
+        metadata.packEntries.push(doImportPackEntry);
     }
 
     function mapByPackageName(moduleName, importAs) {
@@ -73,13 +88,11 @@ function updateBundleStubs(packEntries, bundlingConfig) {
 
             if (trimmedPackId === moduleName || trimmedPackId.indexOf(moduleName + '/') === 0) {
                 var sourceGenParams = {
-                    importAs: importAs,
-                    entryModulePropName: adjunctexternal.ENTRY_MODULE_PROP_NAME
+                    importAs: importAs
                 };
 
                 if (trimmedPackId !== moduleName) {
                     sourceGenParams.moduleName = trimmedPackId;
-                    sourceGenParams.internalRequireFuncName = adjunctexternal.INTERNAL_REQUIRE_FUNC_NAME;
                 }
 
                 var newSource = moduleRequireTemplate(sourceGenParams);
@@ -88,8 +101,7 @@ function updateBundleStubs(packEntries, bundlingConfig) {
                 var modulesDef = metadata.getModuleDefById(packId);
                 if (modulesDef && modulesDef.isKnownAs(moduleName)) {
                     var newSource = moduleRequireTemplate({
-                        importAs: importAs,
-                        entryModulePropName: adjunctexternal.ENTRY_MODULE_PROP_NAME
+                        importAs: importAs
                     });
                     setPackSource(packEntry, newSource);
                 }
@@ -107,9 +119,8 @@ function updateBundleStubs(packEntries, bundlingConfig) {
 
         if (moduleDef) {
             packEntry.source = newSource;
-            packEntry.deps = {
-                '@jenkins-cd/js-modules': jsModulesModuleDef[0].id
-            };
+            packEntry.deps = {};
+            packEntry.deps[DO_IMPORT_PACK_ENTRY_ID] = DO_IMPORT_PACK_ENTRY_ID;
 
             // Go to all of the dependencies and remove this module from
             // it's list of dependants.
@@ -142,7 +153,10 @@ function updateBundleStubs(packEntries, bundlingConfig) {
     // result in an unloadable bundle.
     if (bundlingConfig.ignoreMissing) {
         metadata.packEntries.forEach(function(packEntry) {
-            packEntry.source = "try {\n" + packEntry.source + "\n} catch(e) { if (require.___jenkins_bundle_loaded) { throw e; } }";
+            // Do not wrap the mapped source entries.
+            if (packEntry.source.indexOf(DO_IMPORT_PACK_ENTRY_ID) === -1) {
+                packEntry.source = "try {\n" + packEntry.source + "\n} catch(e) { if (require.___jenkins_bundle_loaded) { throw e; } }";
+            }
         });
     }
 
@@ -222,19 +236,7 @@ function extractModuleDefs(packEntries) {
                 var packId = packEntry.deps[moduleName];
                 var moduleDef = modulesDefs[packId];
                 if (!moduleDef) {
-                    moduleDef = {
-                        id: packId,
-                        knownAs: [],
-                        isKnownAs: function(name) {
-                            // Note that we need to be very careful about how we
-                            // use this. Relative module names may obviously
-                            // resolve to different pack entries, depending on
-                            // the context,
-                            return (this.knownAs.indexOf(name) !== -1);
-                        },
-                        dependants: [],
-                        dependancies: []
-                    };
+                    moduleDef = newModuleDef(packId);
                     
                     if (typeof packId === 'string') {
                         moduleDef.node_module = nodeModulesRelPath(packId);
@@ -250,6 +252,22 @@ function extractModuleDefs(packEntries) {
     }
 
     return modulesDefs;
+}
+
+function newModuleDef(packId) {
+    return {
+        id: packId,
+        knownAs: [],
+        isKnownAs: function(name) {
+            // Note that we need to be very careful about how we
+            // use this. Relative module names may obviously
+            // resolve to different pack entries, depending on
+            // the context,
+            return (this.knownAs.indexOf(name) !== -1);
+        },
+        dependants: [],
+        dependancies: []
+    };
 }
 
 function addDependantsToDefs(metadata) {

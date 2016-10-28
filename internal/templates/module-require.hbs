@@ -1,15 +1,1 @@
-var entryModule = require('@jenkins-cd/js-modules').requireModule('{{importAs}}');
-{{#if internalRequireFuncName}}
-var internalRequireFunc = entryModule.{{internalRequireFuncName}};
-if (internalRequireFunc) {
-    module.exports = internalRequireFunc('{{moduleName}}');
-} else {
-    throw new Error('Unexpected bundle module loading error. Loaded bundle for {{importAs}} does not have an internal require function needed to load {{moduleName}}.');
-}
-{{else}}
-if (entryModule.{{entryModulePropName}}) {
-    module.exports = entryModule.{{entryModulePropName}};
-} else {
-    module.exports = entryModule;
-}
-{{/if}}
+{{#if moduleName}}module.exports = require('____jenkins_doImport').doImport('{{importAs}}', '{{moduleName}}');{{else}}module.exports = require('____jenkins_doImport').doImport('{{importAs}}');{{/if}}
