@@ -60,6 +60,9 @@ function updateBundleStubs(packEntries, bundlingConfig) {
             // And check are there aliases that can be mapped...
             if (moduleMapping.config && moduleMapping.config.aliases) {
                 var aliases = moduleMapping.config.aliases;
+                var newSource = moduleRequireTemplate({
+                    importAs: toSpec.importAs()
+                });
                 for (var ii = 0; ii < aliases.length; ii++) {
                     mapByNodeModulesPath(aliases[ii], newSource);
                 }
