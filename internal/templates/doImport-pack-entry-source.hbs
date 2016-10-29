@@ -1,5 +1,8 @@
 exports.doImport = function (depBundleName, moduleName) {
     var entryModule = require('@jenkins-cd/js-modules').requireModule(depBundleName);
+    if (!entryModule) {
+        throw new Error('Unexpected bundle module loading error. Bundle ' + depBundleName + ' not preloaded.');
+    }
     if (moduleName) {
         var internalRequireFunc = entryModule.{{internalRequireFuncName}};
         if (internalRequireFunc) {
@@ -10,16 +13,11 @@ exports.doImport = function (depBundleName, moduleName) {
                     + moduleName + '.');
             }
             return internalModule;
-        } else {
-            throw new Error('Unexpected bundle module loading error. Loaded bundle for '
-                + depBundleName + ' does not have an internal require function needed to load '
-                + moduleName + '.');
         }
+    }
+    if (entryModule.{{entryModulePropName}}) {
+        return entryModule.{{entryModulePropName}};
     } else {
-        if (entryModule.{{entryModulePropName}}) {
-            return entryModule.{{entryModulePropName}};
-        } else {
-            return entryModule;
-        }
+        return entryModule;
     }
 };
