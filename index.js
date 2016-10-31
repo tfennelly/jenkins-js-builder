@@ -15,6 +15,7 @@ var dependencies = require('./internal/dependecies');
 var tests = require('./internal/tests');
 var maven = require('./internal/maven');
 var bundlegen = require('./internal/bundlegen');
+var adjExt = require('./internal/adjunctexternal');
 var ModuleSpec = require('@jenkins-cd/js-modules/js/ModuleSpec');
 var skipBundle = skipBundle();
 var skipTest = (args.isArgvSpecified('--skipTest') || args.isArgvSpecified('--skipTests'));
@@ -283,6 +284,16 @@ function bundleJs(moduleToBundle, as) {
     if (!moduleToBundle) {
         gutil.log(gutil.colors.red("Error: Invalid bundle registration for module 'moduleToBundle' must be specify."));
         throw new Error("'bundle' registration failed. See error above.");
+    }
+
+    if (!fs.existsSync(moduleToBundle)) {
+        if(dependencies.getDependency(moduleToBundle)) {
+            // This is a bundling instruction to bundle a dependency.
+            var bundleDetails = adjExt.bundleFor(exports, moduleToBundle, true);
+            return bundleDetails.bundle;
+        } else {
+            throw new Error('No such JavaScript resource "' + moduleToBundle + '".');
+        }
     }
 
     var bundle = {};
@@ -599,9 +610,11 @@ function toModuleMapping(from, to, config) {
     var fromSpec = new ModuleSpec(from);
 
     if (!to) {
-        var adjExt = require('./internal/adjunctexternal');
-        to = adjExt.bundleFor(exports, from);
+        var bundleDetails = adjExt.bundleFor(exports, from);
         // If still nothing, use a qualified version of the from
+        if (bundleDetails) {
+            to = bundleDetails.importAs;
+        }
         if (!to) {
             to = fromSpec.importAs();
         }

@@ -12,7 +12,7 @@ var child_process = require('child_process');
 exports.ENTRY_MODULE_PROP_NAME = '___jenkins_entry';
 exports.INTERNAL_REQUIRE_FUNC_NAME = '___jenkins_internalJsRequire';
 
-exports.bundleFor = function(builder, packageName) {
+exports.bundleFor = function(builder, packageName, forceBundle) {
     var packageSpec = new ModuleSpec(packageName);
 
     if (!packageSpec.getLoadBundleFileNamePrefix()) {
@@ -30,11 +30,14 @@ exports.bundleFor = function(builder, packageName) {
     var jsModuleNames = extVersionMetadata.jsModuleNames;
     var installedVersion = extVersionMetadata.installedVersion;
     var inDir = 'target/classes/org/jenkins/ui/jsmodules/' + normalizedPackageName;
+    var bundleDetails = {
+        importAs: extVersionMetadata.importAs()
+    };
     
-    if (!fs.existsSync(cwd + '/' + inDir + '/' + jsModuleNames.filenameFor(installedVersion) + '.js')) {
+    if (forceBundle || !fs.existsSync(cwd + '/' + inDir + '/' + jsModuleNames.filenameFor(installedVersion) + '.js')) {
         // We need to generate an adjunct bundle for the package.
         var bundleSrc = generateBundleSrc(extVersionMetadata);
-        builder.bundle(bundleSrc, packageName + '@' + installedVersion.asBaseVersionString())
+        bundleDetails.bundle = builder.bundle(bundleSrc, packageName + '@' + installedVersion.asBaseVersionString())
             .inDir(inDir)
             .ignoreGlobalExportMappings()
             .doIgnoreMissing()
@@ -45,7 +48,7 @@ exports.bundleFor = function(builder, packageName) {
         logger.logInfo('Bundle for "' + packageName + '" already created. Delete "target" directory and run bundle again to recreate.');
     }
 
-    return extVersionMetadata.importAs();
+    return bundleDetails;
 };
 
 function generateBundleSrc(extVersionMetadata) {
