@@ -170,13 +170,26 @@ exports.defineTask = function(taskname, gulpTask) {
     }
 };
 
-exports.defineBundleTask = function(taskname, gulpTask) {
-    var bundleTaskName = taskname + '_bundle_' + bundleDependencyTaskNames.length;
-    
-    bundleDependencyTaskNames.push(bundleTaskName);
+exports.defineBundleTask = function(taskname, gulpTask, isTaskRedef) {
+    var bundleTaskName;
+
+    if (isTaskRedef) {
+        // If it's a redef, just use the taskName as provided.
+        bundleTaskName = taskname;
+    } else {
+        // If it's not a redef, mangle the name.
+        bundleTaskName = taskname + '_bundle_' + bundleDependencyTaskNames.length;
+    }
+
+    if (bundleDependencyTaskNames.indexOf(bundleTaskName) === -1) {
+        bundleDependencyTaskNames.push(bundleTaskName);
+    }
+
     exports.defineTask(bundleTaskName, gulpTask);
     // Define the 'bundle' task again so it picks up the new dependency
     exports.defineTask('bundle', tasks.bundle);
+
+    return bundleTaskName;
 };
 
 exports.src = function(newPaths) {
@@ -390,6 +403,14 @@ function bundleJs(moduleToBundle, as) {
         return bundle;
     };
 
+    bundle.doOverwriteDuplicate = function() {
+        if (bundle.isDuplicate === true) {
+            // Create a bundle with imports applied/transformed.
+            defineJSBundleTask(bundle, true);
+        }
+        return bundle;
+    };
+
     bundle.noEmptyModuleExport = function() {
         bundle.exportEmptyModule = false;
         return bundle;
@@ -512,32 +533,54 @@ function bundleJs(moduleToBundle, as) {
         return bundle;
     }
 
-    bundle.isDuplicate = false;
-    for (var i = 0; i < bundles.length; i++) {
-        if (bundles[i].bundleModule === bundle.bundleModule && bundles[i].as === bundle.as) {
-            bundle.isDuplicate = true;
-            break;
+    function findDuplicateBundle(bundle) {
+        for (var i = 0; i < bundles.length; i++) {
+            if (bundles[i].bundleModule === bundle.bundleModule && bundles[i].as === bundle.as) {
+                return bundles[i];
+            }
         }
+        return undefined;
     }
-    
-    if (bundle.isDuplicate === true) {
-        // Just return the bundle object, but do not register a task
-        // for creating it.
-        return bundle;
-    }
-    
-    bundles.push(bundle);
+
+    // Do we already have a task defined for this bundle?
+    bundle.isDuplicate = (findDuplicateBundle(bundle) !== undefined);
 
     function defineJSBundleTask(bundle, applyImports) {
-        var bundleTaskName = 'js_bundle_' + bundle.as;
+        var duplicateBundle = findDuplicateBundle(bundle);
+        var bundleTaskName;
 
+        if (duplicateBundle) {
+            if (applyImports) {
+                logger.logInfo('Applying bundle definition override for ' + bundle.as);
+            }
+            bundleTaskName = duplicateBundle.bundleTaskName;
+        } else {
+            bundleTaskName = 'js_bundle_' + bundle.as;
+        }
         if (!applyImports) {
             bundleTaskName += '_no_imports';
         }
 
-        exports.defineBundleTask(bundleTaskName, function() {
+        var mangledTaskName = exports.defineBundleTask(bundleTaskName, function() {
             return bundlegen.doJSBundle(bundle, applyImports);
-        });
+        }, (duplicateBundle !== undefined));
+
+        if (applyImports) {
+            bundle.bundleTaskName = mangledTaskName;
+        } else {
+            bundle.bundleTaskNameNoImports = mangledTaskName;
+        }
+
+        bundles.push(bundle);
+    }
+
+    if (bundle.isDuplicate === true) {
+        // Just return the bundle object, but do not register a task
+        // for creating it. Script can call doOverwriteDuplicate on the
+        // bundle object if they want the bundle to overwrite the already
+        // defined/registered bundling task.
+        logger.logInfo('Duplicate bundle definition found for ' + bundle.as);
+        return bundle;
     }
 
     // Create a bundle with imports applied/transformed.
