@@ -344,6 +344,7 @@ function bundleJs(moduleToBundle, as) {
     bundle.useGlobalExportMappings = true;
     bundle.ignoreMissing = false;
     bundle.minifyBundle = args.isArgvSpecified('--minify');
+    bundle.allowOverwrite = false;
     bundle.generateNoImportsBundle = function() {
         if (skipBundle) {
             return bundle;
@@ -400,6 +401,11 @@ function bundleJs(moduleToBundle, as) {
 
     bundle.doIgnoreMissing = function() {
         bundle.ignoreMissing = true;
+        return bundle;
+    };
+
+    bundle.doAllowOverwrite = function() {
+        bundle.allowOverwrite = true;
         return bundle;
     };
 
@@ -551,6 +557,10 @@ function bundleJs(moduleToBundle, as) {
 
         if (duplicateBundle) {
             if (applyImports) {
+                if (!duplicateBundle.allowOverwrite) {
+                    logger.logInfo('Ignoring bundle definition override for ' + bundle.as + '. This bundle does not permit override.');
+                    return;
+                }
                 logger.logInfo('Applying bundle definition override for ' + bundle.as);
             }
             bundleTaskName = duplicateBundle.bundleTaskName;
