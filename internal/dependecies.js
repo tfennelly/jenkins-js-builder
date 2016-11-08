@@ -1,43 +1,94 @@
 var fs = require('fs');
 var cwd = process.cwd();
+var paths = require('./paths');
+var path = require('path');
+var node_modules = path.resolve(cwd, 'node_modules');
 var packageJson = require(cwd + '/package.json');
 var logger = require('./logger');
+var ModuleSpec = require('@jenkins-cd/js-modules/js/ModuleSpec');
 var Version = require('@jenkins-cd/js-modules/js/Version');
 
 exports.getDependency = function(depName) {
-    function findDep(onDepMap) {
-        if (onDepMap) {
-            return onDepMap[depName];
-        }
-        return undefined;
+    return getDependency(depName, packageJson);
+};
+
+exports.getPackageJson = function(packageName) {
+    var packageInstallDir = path.resolve(node_modules, packageName);
+    var packageJsonFile = path.resolve(packageInstallDir, 'package.json');
+
+    if (fs.existsSync(packageJsonFile)) {
+        return require(packageJsonFile);
     }
-    
-    var version = findDep(packageJson.dependencies);
-    if (version) {
-        return {
-            type: 'runtime',
-            version: version
-        };
-    } else {
-        version = findDep(packageJson.devDependencies);
-        if (version) {
-            return {
-                type: 'dev',
-                version: version
-            };
-        } else {
-            version = findDep(packageJson.peerDependencies);
-            if (version) {
-                return {
-                    type: 'peer',
-                    version: version
-                };
-            }
-            // TODO: bundled and optional deps?
-        }
-    }
-    
+
     return undefined;
+};
+
+exports.getDefinedDependantsOf = function(packageName, scopes) {
+    var dependants = [];
+
+    if (!scopes) {
+        scopes = ['dependencies', 'peerDependencies'];
+    } else if (typeof scopes === 'string') {
+        scopes = [scopes];
+    }
+
+    // Go through all of the deps in the defined scopes, getting their
+    // package.json and then iterating those same scopes to see can we find
+    // depepdencies on packageName. See inner loop.
+    scopes.forEach(function(scope) {
+        var depMap = packageJson[scope];
+        if (depMap) {
+            for (var depPackageName in depMap) {
+                if (depMap.hasOwnProperty(depPackageName)) {
+                    var depPackageJson = exports.getPackageJson(depPackageName);
+
+                    // Now, go through the package.json of the dependency and
+                    // check if it has a dependency on packageName in any of the
+                    // defined scopes.
+                    for (var i = 0; i < scopes.length; i++) {
+                        var depScope = scopes[i];
+                        var depDepMap = depPackageJson[depScope];
+                        if (depDepMap && depDepMap[packageName]) {
+                            dependants.push(new ModuleSpec(depPackageJson.name + '@' + depPackageJson.version));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    return dependants;
+};
+
+exports.getInstalledDependantsOf = function(packageName) {
+    var dependants = [];
+
+    // Walk the node_modules dir. We might need to walk down 2 levels in the tree
+    // so as to accommodate organization packages .
+    paths.walkDirs(node_modules, function(dir) {
+        if (dir === node_modules) {
+            return true;
+        }
+
+        var packageJsonFile = path.resolve(dir, 'package.json');
+        if (fs.existsSync(packageJsonFile)) {
+            var packageJson = require(packageJsonFile);
+            if (getDependency(packageName, packageJson) !== undefined) {
+                dependants.push(new ModuleSpec(packageJson.name + '@' + packageJson.version));
+            }
+        } else if (path.basename(dir).charAt(0) === '@') {
+            // The dir does not contain a package.json, but it's name
+            // has an organization prefix (i.e. '@' prefix on the dir).
+            // In that case, we allow it to recurse down to the next
+            // level in the tree.
+            return true;
+        }
+        // Don't recurse down into the parent dir. See above block for exception.
+        return false;
+    }, 2); // max depth of 2 so as to allow us accommodate organization packages.
+
+    return dependants;
 };
 
 exports.hasJenkinsJsModulesDep = function() {
@@ -154,6 +205,41 @@ exports.normalizePackageName = function(packageName) {
     }
     return packageName;
 };
+
+function getDependency(depName, packageJson) {
+    function findDep(onDepMap) {
+        if (onDepMap) {
+            return onDepMap[depName];
+        }
+        return undefined;
+    }
+
+    var version = findDep(packageJson.dependencies);
+    if (version) {
+        return {
+            type: 'runtime',
+            version: version
+        };
+    } else {
+        version = findDep(packageJson.devDependencies);
+        if (version) {
+            return {
+                type: 'dev',
+                version: version
+            };
+        } else {
+            version = findDep(packageJson.peerDependencies);
+            if (version) {
+                return {
+                    type: 'peer',
+                    version: version
+                };
+            }
+        }
+    }
+
+    return undefined;
+}
 
 /**
  * Create major, minor and patch (version) module names that can

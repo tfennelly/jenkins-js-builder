@@ -300,7 +300,7 @@ function bundleJs(moduleToBundle, as) {
     }
 
     if (!fs.existsSync(moduleToBundle)) {
-        if(dependencies.getDependency(moduleToBundle)) {
+        if(dependencies.getPackageJson(moduleToBundle)) {
             // This is a bundling instruction to bundle a dependency.
             var bundleDetails = adjExt.bundleFor(exports, moduleToBundle, true);
             return bundleDetails.bundle;
@@ -409,7 +409,7 @@ function bundleJs(moduleToBundle, as) {
         return bundle;
     };
 
-    bundle.doOverwriteDuplicate = function() {
+    bundle.doOverwrite = function() {
         if (bundle.isDuplicate === true) {
             // Create a bundle with imports applied/transformed.
             defineJSBundleTask(bundle, true);
@@ -586,7 +586,7 @@ function bundleJs(moduleToBundle, as) {
 
     if (bundle.isDuplicate === true) {
         // Just return the bundle object, but do not register a task
-        // for creating it. Script can call doOverwriteDuplicate on the
+        // for creating it. Script can call doOverwrite on the
         // bundle object if they want the bundle to overwrite the already
         // defined/registered bundling task.
         logger.logInfo('Duplicate bundle definition found for ' + bundle.as);

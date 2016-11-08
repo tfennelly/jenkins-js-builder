@@ -117,7 +117,7 @@ exports.findClosest = function(fileName, startDir) {
 /**
  * Recursively walk a directory tree.
  * @param startDir The directory on which to start.
- * @param callback The callback to call for each directory n the tree.
+ * @param callback The callback to call for each directory in the tree.
  * @param stopAtDepth The depth at which recursion should stop. {@code undefined}
  * or {@code -1} for infinite recursion.
  */
