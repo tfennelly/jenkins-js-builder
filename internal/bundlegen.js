@@ -137,6 +137,10 @@ exports.doJSBundle = function(bundle, applyImports) {
     }
     var bundler = browserify(browserifyConfig);
 
+    for (var i = 0; i < preBundleListeners.length; i++) {
+        preBundleListeners[i].call(bundle, bundler);
+    }
+
     var hasJSX = paths.hasSourceFiles('jsx');
     var hasES6 = paths.hasSourceFiles('es6');
     var hasBabelRc = fs.existsSync('.babelrc');
@@ -187,10 +191,6 @@ exports.doJSBundle = function(bundle, applyImports) {
             map: sourceMap,
             output: bundleTo + '/' + sourceMap
         });
-    }
-
-    for (var i = 0; i < preBundleListeners.length; i++) {
-        preBundleListeners[i].call(bundle, bundler);
     }
 
     // Allow reading of stuff from the filesystem.
