@@ -2,6 +2,7 @@ var maven = require('./maven');
 var dependencies = require('./dependecies');
 var logger = require('./logger');
 var paths = require('./paths');
+var args = require('./args');
 var fs = require('fs');
 var ModuleSpec = require('@jenkins-cd/js-modules/js/ModuleSpec');
 var cwd = process.cwd();
@@ -33,7 +34,11 @@ exports.bundleFor = function(builder, packageName, forceBundle) {
     var bundleDetails = {
         importAs: extVersionMetadata.importAs()
     };
-    
+
+    if (forceBundle === undefined && args.isArgvSpecified('--forceBundle')) {
+        forceBundle = true;
+    }
+
     if (forceBundle || !fs.existsSync(cwd + '/' + inDir + '/' + jsModuleNames.filenameFor(installedVersion) + '.js')) {
         // We need to generate an adjunct bundle for the package.
         var bundleSrc = generateBundleSrc(extVersionMetadata);
