@@ -9,14 +9,11 @@ require('{{this}}');
 // Add an "internal" require function on the exported module.
 // Bundles will use this to require resources inside the package.
 var entryModule = require('{{packageName}}');
-var exportModule = {
-    {{entryModulePropName}}: entryModule,
-    {{internalRequireFuncName}}: function(moduleName) {
-        return require(moduleName);
-    }
+entryModule.{{internalRequireFuncName}} = function(moduleName) {
+    return require(moduleName);
 }
 
-jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.patch}}', exportModule);
-jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.minor}}', exportModule);
-jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.major}}', exportModule);
-jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.any}}', exportModule);
+jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.patch}}', entryModule);
+jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.minor}}', entryModule);
+jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.major}}', entryModule);
+jsModules.exportModule('{{normalizedPackageName}}', '{{jsModuleNames.any}}', entryModule);

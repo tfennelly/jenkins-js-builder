@@ -3,21 +3,17 @@ exports.doImport = function (depBundleName, moduleName) {
     if (!entryModule) {
         throw new Error('Unexpected bundle module loading error. Bundle ' + depBundleName + ' not preloaded.');
     }
+    var doImportRes = entryModule;
     if (moduleName) {
         var internalRequireFunc = entryModule.{{internalRequireFuncName}};
         if (internalRequireFunc) {
-            var internalModule = internalRequireFunc(moduleName);
-            if (!internalModule) {
+            doImportRes = internalRequireFunc(moduleName);
+            if (!doImportRes) {
                 throw new Error('Unexpected bundle module loading error. Loaded bundle for '
                     + depBundleName + ' does not have an internal module named '
                     + moduleName + '.');
             }
-            return internalModule;
         }
     }
-    if (entryModule.{{entryModulePropName}}) {
-        return entryModule.{{entryModulePropName}};
-    } else {
-        return entryModule;
-    }
+    return doImportRes;
 };
