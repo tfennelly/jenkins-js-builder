@@ -57,7 +57,7 @@ function jasmineTestTask() {
                 }
             }]})
             .on('error', function (err) {
-                logger.logError('Jasmine test failures. See console for details (or surefire JUnit report files in target folder).', err);
+                logger.logError('Jasmine test failures. See console for details (or surefire JUnit report files in target folder).' + err);
                 if (builder.isRebundle() || builder.isRetest()) {
                     notifier.notify('Jasmine test failures', 'See console for details (or surefire JUnit report files in target folder).');
                     // ignore failures if we are running rebundle/retesting.
@@ -82,6 +82,7 @@ function mochaTestTask() {
 
     gulp.src(testSpecs).pipe(mocha(mochaConfig))
         .on('error', function (e) {
+            logger.logError('Mocha test failures. See console for details (or surefire JUnit report files in target folder).' + e);
             if (builder.isRetest()) {
                 console.log('**** is retest .... ignoring error');
                 // ignore test failures if we are running retest.
