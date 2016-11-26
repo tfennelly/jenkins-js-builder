@@ -80,6 +80,36 @@ function mochaTestTask() {
         };
     }
 
+    //
+    // Mocha spec loading can fail during mocha initialization. If path.resolve
+    // fails for some reason, you get a stack trace, but it's totally useless
+    // because it doesn't tell you which spec file was the source of the resolve
+    // error. The following code patches that.
+    //
+    var MochaConstructor = require('mocha');
+    if (MochaConstructor.prototype.loadFiles && !MochaConstructor.__jenkinsLoadfilesWrapped) {
+        var path = require('path');
+        MochaConstructor.prototype.loadFiles = function(fn) {
+            var self = this;
+            var suite = this.suite;
+            this.files.forEach(function(file) {
+                try {
+                    file = path.resolve(file);
+                    suite.emit('pre-require', global, file, self);
+                    suite.emit('require', require(file), file, self);
+                    suite.emit('post-require', global, file, self);
+                } catch(e) {
+                    logger.logError('*****************************************************************');
+                    logger.logError('Mocha test initialization failure. Failed to load spec file "' + file + '". Tests will not run. See stack trace below.');
+                    logger.logError('*****************************************************************');
+                    throw e;
+                }
+            });
+            fn && fn();
+        };
+        MochaConstructor.__jenkinsLoadfilesWrapped = true;
+    }
+
     gulp.src(testSpecs).pipe(mocha(mochaConfig))
         .on('error', function (e) {
             logger.logError('Mocha test failures. See console for details (or surefire JUnit report files in target folder).' + e);
