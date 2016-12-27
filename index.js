@@ -142,7 +142,7 @@ exports.defineTasks = function(tasknames) {
     }
 
     if (defaults.length > 0) {
-        logger.logInfo('Defining default tasks...');
+        logger.logInfo('Defining default tasks: ' + defaults);
         gulp.task('default', defaults);
     }
 };
