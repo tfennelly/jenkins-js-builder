@@ -261,8 +261,9 @@ exports.doCSSBundle = function(bundle, resource) {
 
 function less(src, targetDir) {
     var less = require('gulp-less');
+    // Run less with the ieCompat option switched off. Sorry, but we don't care about IE8 !!!
     gulp.src(src)
-        .pipe(less().on('error', function (err) {
+        .pipe(less({ieCompat: false}).on('error', function (err) {
             logger.logError('LESS processing error:');
             if (err) {
                 logger.logError('\tmessage: ' + err.message);
