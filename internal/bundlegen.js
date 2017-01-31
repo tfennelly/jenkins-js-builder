@@ -1,9 +1,11 @@
 var gulp = require('gulp');
 var fs = require('fs');
+var cwd = process.cwd();
 var main = require('../index');
 var langConfig = require('./langConfig');
 var dependencies = require('./dependecies');
 var paths = require('./paths');
+var path = require('path');
 var maven = require('./maven');
 var logger = require('./logger');
 var args = require('./args');
@@ -15,6 +17,7 @@ var _string = require('underscore.string');
 var templates = require('./templates');
 var ModuleSpec = require('@jenkins-cd/js-modules/js/ModuleSpec');
 var entryModuleTemplate = templates.getTemplate('entry-module.hbs');
+var entryModuleWrapperTemplate = templates.getTemplate('entry-module-wrapper.js');
 var packageJson = require(process.cwd() + '/package.json');
 
 var hasJenkinsJsModulesDependency = dependencies.hasJenkinsJsModulesDep();
@@ -121,6 +124,53 @@ exports.doJSBundle = function(bundle, applyImports) {
         }
         fileToBundle = 'target/' + bundle.bundleOutputFile;
         fs.writeFileSync(fileToBundle, "module.exports = require('" + bundle.module + "');");
+    }
+
+    bundle.doOnExecCall = true;
+    if (bundle.startupModules.length > 0) {
+        var wrapperFileDir = './target/js-bundle-src';
+        var relativeStartupModules = [];
+
+        for (var ii = 0; ii < bundle.startupModules.length; ii++) {
+            var startupModule = bundle.startupModules[ii];
+            if (startupModule.charAt(0) === '.') {
+                var relativeModulePath = path.relative(wrapperFileDir, startupModule);
+                if (fs.existsSync(cwd + '/' + startupModule + '.js') || fs.existsSync(cwd + '/' + startupModule)) {
+                    relativeStartupModules.push(relativeModulePath);
+                } else {
+                    logger.logInfo('Javascript bundle "' + bundle.as + '" will not execute startup script "' + startupModule + '". Unable to find local script.')
+                }
+            } else {
+                if (fs.existsSync(cwd + '/node_modules/' + startupModule + '.js') || fs.existsSync(cwd + '/node_modules/' + startupModule)) {
+                    relativeStartupModules.push(startupModule);
+                } else {
+                    logger.logInfo('Javascript bundle "' + bundle.as + '" will not execute startup script "' + startupModule + '". Unable to find script in node_modules.')
+                }
+            }
+        }
+
+        if (relativeStartupModules.length > 0) {
+            //
+            // Lets load the entry module via a "wrapper" module. This wrapper
+            // module will allow us to "inject" startup scripts (into the bundle) that
+            // will need to execute and resolve before the entry module is allowed to execute.
+            // Bundles will use this to async load resources that must be loaded before the
+            // bundle can execute e.g. i18n plugin resources in Blue Ocean.
+            //
+            var fileToBasename = path.basename(fileToBundle);
+            var wrapperFileName = wrapperFileDir + '/_js_wrapper-' + fileToBasename;
+            var wrapperFileContent = entryModuleWrapperTemplate({
+                entrymodule: './' + path.relative(wrapperFileDir, fileToBundle),
+                hpiPluginId: (maven.isHPI() ? maven.getArtifactId() : undefined),
+                startupModules: relativeStartupModules
+            });
+            // Switch off the calling of the onExec callback. this is done inside
+            // entryModuleWrapperTemplate, after all startup scripts are "done".
+            bundle.doOnExecCall = false;
+            paths.mkdirp(wrapperFileDir);
+            fs.writeFileSync(wrapperFileName, wrapperFileContent);
+            fileToBundle = wrapperFileName;
+        }
     }
 
     var browserifyConfig = {
