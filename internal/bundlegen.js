@@ -159,8 +159,10 @@ exports.doJSBundle = function(bundle, applyImports) {
             //
             var fileToBasename = path.basename(fileToBundle);
             var wrapperFileName = wrapperFileDir + '/_js_wrapper-' + fileToBasename;
+            var relativePath = path.relative(wrapperFileDir, fileToBundle);
+            relativePath = relativePath.replace(/\\/g, '/');
             var wrapperFileContent = entryModuleWrapperTemplate({
-                entrymodule: './' + path.relative(wrapperFileDir, fileToBundle),
+                entrymodule: './' + relativePath,
                 hpiPluginId: (maven.isHPI() ? maven.getArtifactId() : undefined),
                 startupModules: relativeStartupModules
             });
