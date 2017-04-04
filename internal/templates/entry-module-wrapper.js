@@ -22,6 +22,7 @@ promise.make(function(fulfill) {
         var startupModule = require('{{this}}');
         startupModule.execute(fulfill, config);
     } catch (e) {
+        console.error(e);
         throw new Error('Unexpected error executing startup module "{{this}}": ' + e);
     }
 }).onFulfilled(function() {
