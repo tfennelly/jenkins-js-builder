@@ -142,7 +142,7 @@ exports.defineTasks = function(tasknames) {
     }
 
     if (defaults.length > 0) {
-        logger.logInfo('Defining default tasks...');
+        logger.logInfo('Defining default tasks: ' + defaults);
         gulp.task('default', defaults);
     }
 };
@@ -319,6 +319,8 @@ function bundleJs(moduleToBundle, as) {
     bundle.useGlobalImportMappings = true;
     bundle.useGlobalExportMappings = true;
     bundle.minifyBundle = args.isArgvSpecified('--minify');
+    bundle.startupModules = [];
+
     bundle.generateNoImportsBundle = function() {
         if (skipBundle) {
             return bundle;
@@ -441,7 +443,7 @@ function bundleJs(moduleToBundle, as) {
                 // This is the "traditional" export use case.
                 bundle.bundleExport = true;
                 bundle.bundleExportNamespace = packageJson.name;
-            } else if (dependencies.getDependency(moduleName) !== undefined) {
+            } else if (dependencies.getDependency(moduleName, false) !== undefined) {
                 // We are exporting some dependency of this module Vs exporting
                 // the top/entry level module of the generated bundle. This allows the bundle
                 // to control loading of a specific dependency (or set of) and then share that with
@@ -489,6 +491,13 @@ function bundleJs(moduleToBundle, as) {
             }
         }
         return undefined;
+    };
+
+    bundle.onStartup = function (startupModule) {
+        if (typeof startupModule === 'string') {
+            bundle.startupModules.push(startupModule);
+        }
+        return bundle;
     };
 
     if (skipBundle) {
