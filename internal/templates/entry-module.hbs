@@ -1,6 +1,64 @@
 var ___$$$___jsModules = require('@jenkins-cd/js-modules');
 
-___$$$___jsModules.whoami('{{#if bundle.bundleExportNamespace}}{{bundle.bundleExportNamespace}}:{{/if}}{{bundle.as}}');
+if (!window.jenkinsCIGlobal) {
+    window.jenkinsCIGlobal = {};
+}
+if (!window.jenkinsCIGlobal._internal) {
+    window.jenkinsCIGlobal._internal = {};
+}
+
+var whoami = '{{#if bundle.bundleExportNamespace}}{{bundle.bundleExportNamespace}}:{{/if}}{{bundle.as}}';
+var loadTimestamp = Date.now();
+
+___$$$___jsModules.whoami(whoami);
+
+// Clear out the session storage if this is the first
+// bundle to export on the page.
+var trackKeyPrefix = 'jenkins-cd/js-modules/tracking/';
+if (window.sessionStorage && !jenkinsCIGlobal._internal.bundleLoadIdx) {
+    jenkinsCIGlobal._internal.bundleLoadIdx = 0;
+    var toRemove = [];
+    for (var i = 0; i < sessionStorage.length; i++) {
+        var key = sessionStorage.key(i);
+        if (key.indexOf(trackKeyPrefix) === 0) {
+            toRemove.push(key);
+        }
+    }
+    for (var i = 0; i < toRemove.length; i++) {
+        sessionStorage.removeItem(toRemove[i]);
+    }
+}
+jenkinsCIGlobal._internal.bundleLoadIdx++;
+
+if (window.sessionStorage) {
+    sessionStorage.setItem(trackKeyPrefix + 'load:' + whoami, JSON.stringify({
+        event: 'load',
+        bundleId: whoami,
+        bundlePath: '{{bundle.bundleInDir}}/{{bundle.bundleOutputFile}}',
+        at: loadTimestamp,
+        loadIdx: jenkinsCIGlobal._internal.bundleLoadIdx
+    }));
+}
+
+function ___$$$___doExport(namespace, moduleName, module) {
+    var exportedModuleId = (namespace !== undefined ? (namespace + ':' + moduleName) : moduleName);
+    try {
+        ___$$$___jsModules.requireModule(exportedModuleId);
+        // No exception => already exported. Shouldn't happen, but okay !!
+        return;
+    } catch (e) {
+        // Not exported yet, hence exception on require. Okay to export !!
+        ___$$$___jsModules.exportModule(namespace, moduleName, module);
+        if (window.sessionStorage) {
+            sessionStorage.setItem(trackKeyPrefix + 'export:' + exportedModuleId, JSON.stringify({
+                event: 'export',
+                moduleId: exportedModuleId,
+                at: loadTimestamp,
+                bundleId: whoami
+            }));
+        }
+    }
+}
 
 /*** Start Module Exec Function ***************************************/
 function ___$$$___exec(onExec) {
@@ -11,14 +69,14 @@ function ___$$$___exec(onExec) {
 
 function ___$$$___doExports() {
     // Do exports, if any ....
-    {{#if entryExport}}___$$$___jsModules.exportModule({{entryExport.namespace}}, '{{bundle.as}}', {{entryExport.module}});{{/if}}
+    {{#if entryExport}}___$$$___doExport({{entryExport.namespace}}, '{{bundle.as}}', {{entryExport.module}});{{/if}}
 
     {{#if dependencyExports}}
         function doDependencyExport(module, normalizedPackageName, jsModuleNames) {
-            ___$$$___jsModules.exportModule(normalizedPackageName, jsModuleNames.patch, module);
-            ___$$$___jsModules.exportModule(normalizedPackageName, jsModuleNames.minor, module);
-            ___$$$___jsModules.exportModule(normalizedPackageName, jsModuleNames.major, module);
-            ___$$$___jsModules.exportModule(normalizedPackageName, jsModuleNames.any, module);
+            ___$$$___doExport(normalizedPackageName, jsModuleNames.patch, module);
+            ___$$$___doExport(normalizedPackageName, jsModuleNames.minor, module);
+            ___$$$___doExport(normalizedPackageName, jsModuleNames.major, module);
+            ___$$$___doExport(normalizedPackageName, jsModuleNames.any, module);
         }
 
         {{#each dependencyExports}}

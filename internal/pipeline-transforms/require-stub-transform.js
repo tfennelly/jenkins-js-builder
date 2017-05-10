@@ -9,10 +9,14 @@ var unpack = require('browser-unpack');
 var browserifyTree = require('browserify-tree');
 var ModuleSpec = require('@jenkins-cd/js-modules/js/ModuleSpec');
 var logger = require('../logger');
-var node_modules_path = process.cwd() + '/node_modules/';
+var cwd = process.cwd();
+var pathPrefix = cwd + '/';
+var node_modules_path = cwd + '/node_modules/';
 var args = require('../args');
+var paths = require('../paths');
+var maven = require('../maven');
 
-function pipelingPlugin(moduleMappings) {
+function pipelingPlugin(bundleDef, bundleOutFile) {
     return through.obj(function (bundle, encoding, callback) {
         if (!(bundle instanceof Buffer)) {
             callback(new Error('Sorry, this transform only supports Buffers.'));
@@ -22,14 +26,36 @@ function pipelingPlugin(moduleMappings) {
         var bundleContent = bundle.toString('utf8');
         var packEntries  = unpack(bundleContent);
 
-        updateBundleStubs(packEntries, moduleMappings);
+        var metadata = updateBundleStubs(packEntries, bundleDef.moduleMappings, true);
+        metadata = fullPathsToTruncatedPaths(metadata);
+        var bundleInfo = {
+            jsModulesId: bundleDef.asModuleSpec.importAs(),
+            created: Date.now(),
+            jsBuilderVer: getBuilderVersion()
+        };
+        if (maven.isHPI()) {
+            bundleInfo.hpiPluginId = maven.getArtifactId();
+        }
+        bundleInfo.moduleDefs = metadata.modulesDefs;
+
+        // Dump data that can be used by tooling.
+        // .json file can't be loaded as an adjunct (ffs :) )
+        paths.mkdirp(paths.parentDir(bundleOutFile));
+        require('fs').writeFileSync(bundleOutFile + '-info.js', JSON.stringify(bundleInfo));
+        require('fs').writeFileSync(bundleOutFile + '-packEntries.js', JSON.stringify(metadata.packEntries));
+
+        // We told updateBundleStubs (above) to skipFullPathToIdRewrite,
+        // so we need to do that before going further.
+        if (!args.isArgvSpecified('--full-paths')) {
+            fullPathsToIds(metadata);
+        }
 
         this.push(JSON.stringify(packEntries));
         callback();
     });
 }
 
-function updateBundleStubs(packEntries, moduleMappings) {
+function updateBundleStubs(packEntries, moduleMappings, skipFullPathToIdRewrite) {
     var metadata = extractBundleMetadata(packEntries);
     var jsModulesModuleDef = metadata.getPackEntriesByName('@jenkins-cd/js-modules');
 
@@ -48,23 +74,23 @@ function updateBundleStubs(packEntries, moduleMappings) {
             if (!moduleMapping.fromSpec) {
                 moduleMapping.fromSpec = new ModuleSpec(moduleMapping.from);
             }
-            
-            mapByPackageName(moduleMapping.fromSpec.moduleName, newSource);
-            
+
+            mapByPackageName(moduleMapping.fromSpec.moduleName, importAs, newSource);
+
             // And check are there aliases that can be mapped...
             if (moduleMapping.config && moduleMapping.config.aliases) {
                 var aliases = moduleMapping.config.aliases;
                 for (var ii = 0; ii < aliases.length; ii++) {
-                    mapByNodeModulesPath(aliases[ii], newSource);
+                    mapByNodeModulesPath(aliases[ii], importAs, newSource);
                 }
             }
         }
     }
 
-    function mapByPackageName(moduleName, newSource) {
+    function mapByPackageName(moduleName, importModule, newSource) {
         var mappedPackEntries = metadata.getPackEntriesByName(moduleName);
         if (mappedPackEntries.length === 1) {
-            setPackSource(mappedPackEntries[0], newSource);
+            setPackSource(mappedPackEntries[0], importModule, newSource);
         } else if (mappedPackEntries.length > 1) {
             logger.logWarn('Cannot map module "' + moduleName + '". Multiple bundle map entries are known by this name (in different contexts).');
         } else {
@@ -73,41 +99,93 @@ function updateBundleStubs(packEntries, moduleMappings) {
             // See removeDependant and how it calls removePackEntryById.
         }
     }
-    function mapByNodeModulesPath(node_modules_path, newSource) {
+    function mapByNodeModulesPath(node_modules_path, importModule, newSource) {
         var packEntry = metadata.getPackEntriesByNodeModulesPath(node_modules_path);
         if (packEntry) {
-            setPackSource(packEntry, newSource);
+            setPackSource(packEntry, importModule, newSource);
         }
     }
-    function setPackSource(packEntry, newSource) {
+    function setPackSource(packEntry, importModule, newSource) {
         var moduleDef = metadata.modulesDefs[packEntry.id];
 
         if (moduleDef) {
+            var originalDeps = packEntry.deps;
+
             packEntry.source = newSource;
             packEntry.deps = {
                 '@jenkins-cd/js-modules': jsModulesModuleDef[0].id
             };
 
-            // Go to all of the dependencies and remove this module from
-            // it's list of dependants.
-            removeDependant(moduleDef, metadata);
+            // Mark the moduleDef with info that helps us recognise that it
+            // was stubbed.
+            moduleDef.stubbed = {
+                importModule: importModule
+            };
+            moduleDef.size = packEntry.source.length;
+            // console.log('**** stubbing ' + packEntry.id + ' to import ' + importModule, moduleDef);
+
+            // Need to look at all the original dependencies and
+            // remove them if nothing else is depending on them.
+            removeUnusedDeps(metadata, originalDeps);
         }
     }
 
     // Scan the bundle again now and remove all unused stragglers.
     const unusedModules = browserifyTree.getUnusedModules(metadata.packEntries);
     unusedModules.forEach(function(moduleId) {
-        removePackEntryById(metadata, moduleId);
+        if (!hasDeps(moduleId, metadata, unusedModules)) {
+            removePackEntryById(metadata, moduleId);
+        }
     });
-    
-    if (!args.isArgvSpecified('--full-paths')) {
+
+    verifyDepsOkay(metadata);
+
+    if (!skipFullPathToIdRewrite && !args.isArgvSpecified('--full-paths')) {
         metadata = fullPathsToIds(metadata);
     }
-    
+
     // Keeping as it's handy for debug purposes.
     //require('fs').writeFileSync('./target/bundlepack.json', JSON.stringify(packEntries, undefined, 4));
-    
+
     return metadata;
+}
+
+function verifyDepsOkay(metadata) {
+    for (var i in metadata.packEntries) {
+        var packEntry = metadata.packEntries[i];
+
+        for (var module in packEntry.deps) {
+            if (packEntry.deps.hasOwnProperty(module)) {
+                var entryDepId = packEntry.deps[module];
+                if (!metadata.modulesDefs[entryDepId]) {
+                    console.log('[WARNING] Unexpected bundling error: packEntry ' + packEntry.id + ' depends on ' + entryDepId + ' but there is no moduleDef for that.');
+                }
+            }
+        }
+    }
+}
+
+function hasDeps(moduleName, metadata, ignoring) {
+    for (var i in metadata.packEntries) {
+        var packEntry = metadata.packEntries[i];
+
+        if (ignoring && ignoring.indexOf(packEntry.id)) {
+            // Don't include this pack entry
+            // as one to check.
+            continue;
+        }
+
+        for (var module in packEntry.deps) {
+            if (packEntry.deps.hasOwnProperty(module)) {
+                var entryDepId = packEntry.deps[module];
+                if (entryDepId === moduleName) {
+                    // this pack depends on that module.
+                    return packEntry.id;
+                }
+            }
+        }
+    }
+    return undefined;
 }
 
 function extractBundleMetadata(packEntries) {
@@ -132,119 +210,73 @@ function extractBundleMetadata(packEntries) {
         }
     };
 
-    // We could remove unused modules from the packEntries at this point i.e. modules
-    // that did not make an entry in modulesDefs are modules that nothing depends on.
-    // Is there any good reason why these can not be removed from the bundle? Is there
-    // a reason why browserify did not remove them? I've (TF) seen this and I'm not
-    // talking about the entry module, which would often not have anything depending
-    // on it.
-
-    addDependantsToDefs(metadata);
-    addDependanciesToDefs(metadata);
+    addKnownAsToDefs(metadata);
 
     return metadata;
-}
-
-function removeDependant(moduleDefToRemove, metadata) {
-    for (var packId in metadata.modulesDefs) {
-        if (metadata.modulesDefs.hasOwnProperty(packId)) {
-            var moduleDef = metadata.modulesDefs[packId];
-            if (moduleDef && moduleDef !== moduleDefToRemove) {
-                var dependantEntryIndex = moduleDef.dependants.indexOf(moduleDefToRemove.id);
-                if (dependantEntryIndex !== -1) {
-                    moduleDef.dependants.splice(dependantEntryIndex, 1);
-                    if (moduleDef.dependants.length === 0 && !isReferencedByDedupe(metadata, moduleDef.id)) {
-                        // If this module no longer has any dependants (i.e. nothing depends on it),
-                        // that means that we can remove this module from the bundle. In turn, that
-                        // also means that we can remove this module from the dependants list of other
-                        // modules in the bundle. Therefore, there's a potential cascading effect that
-                        // prunes the bundle of modules that are no longer in use as a result of
-                        // mapping/stubbing modules.
-                        removePackEntryById(metadata, moduleDef.id);
-                        removeDependant(moduleDef, metadata);
-                    }
-                }
-            }
-        }
-    }
 }
 
 function extractModuleDefs(packEntries) {
     var modulesDefs = {};
 
-    for (var i in packEntries) {
+    // Create a moduleDef for each pack entry
+    for (var i = 0; i < packEntries.length; i++) {
         var packEntry = packEntries[i];
-
-        for (var moduleName in packEntry.deps) {
-            if (packEntry.deps.hasOwnProperty(moduleName)) {
-                var packId = packEntry.deps[moduleName];
-                var moduleDef = modulesDefs[packId];
-                if (!moduleDef) {
-                    moduleDef = {
-                        id: packId,
-                        knownAs: [],
-                        isKnownAs: function(name) {
-                            // Note that we need to be very careful about how we
-                            // use this. Relative module names may obviously
-                            // resolve to different pack entries, depending on
-                            // the context,
-                            return (this.knownAs.indexOf(name) !== -1);
-                        },
-                        dependants: [],
-                        dependancies: []
-                    };
-                    
-                    if (typeof packId === 'string') {
-                        moduleDef.node_module = nodeModulesRelPath(packId);
-                    }
-                    
-                    modulesDefs[packId] = moduleDef;
-                }
-                if (moduleDef.knownAs.indexOf(moduleName) === -1) {
-                    moduleDef.knownAs.push(moduleName);
-                }
+        var modulePath = packEntry.id;
+        var moduleDef = {
+            id: modulePath,
+            entry: packEntry.entry,
+            packageInfo: getPackageInfoFromModulePath(modulePath),
+            knownAs: [],
+            size: packEntry.source.length,
+            isKnownAs: function(name) {
+                // Note that we need to be very careful about how we
+                // use this. Relative module names may obviously
+                // resolve to different pack entries, depending on
+                // the context,
+                return (this.knownAs.indexOf(name) !== -1);
             }
+        };
+
+        if (typeof modulePath === 'string') {
+            moduleDef.node_module = nodeModulesRelPath(modulePath);
         }
+
+        modulesDefs[modulePath] = moduleDef;
     }
 
     return modulesDefs;
 }
 
-function addDependantsToDefs(metadata) {
-    for (var i in metadata.packEntries) {
+function getPackageInfoFromModulePath(modulePath) {
+    if (typeof modulePath === 'string') {
+        var packageJsonFile = paths.findClosest('package.json', paths.parentDir(modulePath));
+        if (packageJsonFile) {
+            var packageJson = require(packageJsonFile);
+            return {
+                name: packageJson.name,
+                version: packageJson.version,
+                path: toRelativePath(paths.parentDir(packageJsonFile)),
+                repository: packageJson.repository,
+                gitHead: packageJson.gitHead
+            };
+        }
+    }
+    return undefined;
+}
+
+function addKnownAsToDefs(metadata) {
+    for (var i = 0; i < metadata.packEntries.length; i++) {
         var packEntry = metadata.packEntries[i];
 
         for (var module in packEntry.deps) {
             if (packEntry.deps.hasOwnProperty(module)) {
                 var entryDepId = packEntry.deps[module];
                 var moduleDef = metadata.modulesDefs[entryDepId];
-                if (moduleDef.dependants.indexOf(packEntry.id) === -1) {
-                    moduleDef.dependants.push(packEntry.id);
+                if (!moduleDef || moduleDef.entry) {
+                    continue;
                 }
-            }
-        }
-    }
-}
-
-function addDependanciesToDefs(metadata) {
-    for (var i in metadata.packEntries) {
-        var packEntry = metadata.packEntries[i];
-        var moduleDef = metadata.modulesDefs[packEntry.id];
-
-        if (!moduleDef) {
-            // This is only expected if it's the entry module.
-            if (!packEntry.entry) {
-                // No moduleDef created for moduleId with that pack ID. This module probably has
-                // nothing depending on it (and in reality, could probably be removed from the bundle).
-            }
-            continue;
-        }
-
-        for (var module in packEntry.deps) {
-            if (packEntry.deps.hasOwnProperty(module)) {
-                var entryDepId = packEntry.deps[module];
-                if (moduleDef.dependancies.indexOf(entryDepId) === -1) {
-                    moduleDef.dependancies.push(entryDepId);
+                if (moduleDef.knownAs.indexOf(module) === -1) {
+                    moduleDef.knownAs.push(module);
                 }
             }
         }
@@ -302,33 +334,47 @@ function getPackEntriesByNodeModulesPath(metadata, node_modules_path) {
 }
 
 function removePackEntryById(metadata, id) {
-    for (var packId in metadata.packEntries) {
-        if (metadata.packEntries.hasOwnProperty(packId)) {
-            if (metadata.packEntries[packId].id.toString() === id.toString()) {
-                metadata.packEntries.splice(packId, 1);
-                return;
+    delete metadata.modulesDefs[id];
+    for (var i = 0; i < metadata.packEntries.length; i++) {
+        var packEntry = metadata.packEntries[i];
+        if (packEntry.id.toString() === id.toString()) {
+            // Remove that pack entry from the bundle.
+            metadata.packEntries.splice(i, 1);
+            // Need to look at all the dependencies of the remove
+            // pack entry, and recursively remove any of them where
+            // there's no longer anything depending on them.
+            removeUnusedDeps(metadata, packEntry.deps);
+            return;
+        }
+    }
+}
+
+function removeUnusedDeps(metadata, deps) {
+    for (var dep in deps) {
+        if (deps.hasOwnProperty(dep)) {
+            var depId = deps[dep];
+            if (!hasDeps(depId, metadata)) {
+                // No longer anythying depending on it, so
+                // remove it from the bundle
+                removePackEntryById(metadata, depId);
             }
         }
     }
 }
 
-/**
- * Check all packs in the bundle, returning <code>true</code> if there's a pack
- * that contains a deduped reference to the supplied pack Id.
- * @param metadata Bundle metadata.
- * @param packId Pack Id.
- * @returns {boolean} 
- */
-function isReferencedByDedupe(metadata, packId) {
+function fullPathsToTruncatedPaths(metadata) {
     for (var i in metadata.packEntries) {
         if (metadata.packEntries.hasOwnProperty(i)) {
             var packEntry = metadata.packEntries[i];
-            if (packEntry.source === 'arguments[4]["' + packId + '"][0].apply(exports,arguments)') {
-                return true;
-            }
+            var currentPackId = packEntry.id;
+            var truncatedPackId = toRelativePath(currentPackId);
+
+            mapDependencyId(currentPackId, truncatedPackId, metadata);
+            packEntry.id = truncatedPackId;
         }
     }
-    return false;
+
+    return metadata;
 }
 
 function fullPathsToIds(metadata) {
@@ -339,39 +385,63 @@ function fullPathsToIds(metadata) {
             var packEntry = metadata.packEntries[i];
             var currentPackId = packEntry.id;
 
-            mapDependencyId(currentPackId, nextPackId);
+            mapDependencyId(currentPackId, nextPackId, metadata);
             packEntry.id = nextPackId;
 
             // And inc...
             nextPackId++;
         }
     }
-    
-    function mapDependencyId(from, to) {
-        var dedupeSourceFrom = 'arguments[4]["' + from + '"][0].apply(exports,arguments)';
-        var dedupeSourceTo = 'arguments[4][' + to + '][0].apply(exports,arguments)';
-        
-        for (var i in metadata.packEntries) {
-            if (metadata.packEntries.hasOwnProperty(i)) {
-                var packEntry = metadata.packEntries[i];
-                var packDeps = packEntry.deps;
-                
-                for (var dep in packDeps) {
-                    if (packDeps.hasOwnProperty(dep) && packDeps[dep] === from) {
-                        packDeps[dep] = to;
-                    }
+
+    return metadata;
+}
+
+function toRelativePath(path) {
+    if (path === cwd) {
+        return '';
+    } else if (path.indexOf(pathPrefix) === 0) {
+        return path.substring(pathPrefix.length);
+    }
+    return path;
+}
+
+function mapDependencyId(from, to, metadata) {
+    var dedupeSourceFrom = 'arguments[4]["' + from + '"][0].apply(exports,arguments)';
+    var dedupeSourceTo;
+
+    if (typeof to === 'number') {
+        dedupeSourceTo = 'arguments[4][' + to + '][0].apply(exports,arguments)';
+    } else {
+        dedupeSourceTo = 'arguments[4]["' + to + '"][0].apply(exports,arguments)';
+    }
+
+    // Fixup the pack entries
+    for (var i in metadata.packEntries) {
+        if (metadata.packEntries.hasOwnProperty(i)) {
+            var packEntry = metadata.packEntries[i];
+            var packDeps = packEntry.deps;
+
+            for (var dep in packDeps) {
+                if (packDeps.hasOwnProperty(dep) && packDeps[dep] === from) {
+                    packDeps[dep] = to;
                 }
-                
-                // Check the pack entry source for it being a dedupe,
-                // translating it if required.
-                if (packEntry.source === dedupeSourceFrom) {
-                    packEntry.source = dedupeSourceTo;
-                }
+            }
+
+            // Check the pack entry source for it being a dedupe,
+            // translating it if required.
+            if (packEntry.source === dedupeSourceFrom) {
+                packEntry.source = dedupeSourceTo;
             }
         }
     }
-    
-    return extractBundleMetadata(metadata.packEntries);
+
+    // Fixup the moduleDef
+    var moduleDef = metadata.modulesDefs[from];
+    // Remove the moduleDef from the id it's currently known as.
+    delete metadata.modulesDefs[from];
+    // And reset the id 'to' the new id
+    moduleDef.id = to;
+    metadata.modulesDefs[to] = moduleDef;
 }
 
 function listAllModuleNames(modulesDefs) {
@@ -390,6 +460,12 @@ function listAllModuleNames(modulesDefs) {
     }
 
     return names;
+}
+
+function getBuilderVersion() {
+    var path = require('path');
+    var builderPackageJson = require(path.join(__dirname, '../../package.json'));
+    return builderPackageJson.version;
 }
 
 exports.pipelinePlugin = pipelingPlugin;
