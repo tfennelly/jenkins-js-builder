@@ -39,10 +39,6 @@ gulp.on('error', function(err) {
     process.stderr.write(err);
 });
 
-gulp.on('failed', function(err) {
-    process.exit(err);
-});
-
 // Lets pass on the options supplied, stripping off the
 // leading '--'.
 var options = {};
@@ -61,4 +57,8 @@ for (var i = 0; i < process.argv.length; i++) {
 delete options.tasks;
 options.cwd = cwd;
 
-gulp.run(tasks, options);
+gulp.run(tasks, options, function(error) {
+    if (error) {
+        process.exitCode = 1;
+    }
+});
