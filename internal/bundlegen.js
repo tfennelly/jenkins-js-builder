@@ -262,18 +262,19 @@ exports.doJSBundle = function(bundle, applyImports) {
             }
         });
 
+    var bundleOutFile = bundleTo + '/' + bundle.bundleOutputFile;
+
     if (applyImports) {
         var bufferedTextTransform = require('./pipeline-transforms/buffered-text-accumulator-transform');
         var requireStubTransform = require('./pipeline-transforms/require-stub-transform');
         var pack = require('browser-pack');
 
         bundleOutput = bundleOutput.pipe(bufferedTextTransform())// gathers together all the bundle JS, preparing for the next pipeline stage
-            .pipe(requireStubTransform.pipelinePlugin(bundle.moduleMappings)) // transform the require stubs
+            .pipe(requireStubTransform.pipelinePlugin(bundle, bundleOutFile)) // transform the require stubs
             .pipe(pack()); // repack the bundle after the previous transform
     }
 
     var through = require('through2');
-    var bundleOutFile = bundleTo + '/' + bundle.bundleOutputFile;
     return bundleOutput.pipe(source(bundle.bundleOutputFile))
         .pipe(gulp.dest(bundleTo))
         .pipe(through.obj(function (bundle, encoding, callback) {
