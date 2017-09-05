@@ -1,4 +1,19 @@
-___$$$___doExport('{{normalizedPackageName}}', '{{jsModuleNames.patch}}', require('{{packageName}}'));
-___$$$___doExport('{{normalizedPackageName}}', '{{jsModuleNames.minor}}', require('{{packageName}}'));
-___$$$___doExport('{{normalizedPackageName}}', '{{jsModuleNames.major}}', require('{{packageName}}'));
-___$$$___doExport('{{normalizedPackageName}}', '{{jsModuleNames.any}}', require('{{packageName}}'));
+var jsModules = require('@jenkins-cd/js-modules');
+
+// Require all the .js and .jsx resources in the package, forcing them
+// to be added to the generated bundle.
+{{#each jsFiles}}
+try { require('{{this}}'); } catch (e) {}
+{{/each}}
+
+// Add an "internal" require function on the exported module.
+// Bundles will use this to require resources inside the package.
+var entryModule = require('{{packageName}}');
+entryModule.{{internalRequireFuncName}} = function(moduleName) {
+    return require(moduleName);
+}
+
+___$$$___doExport('{{normalizedPackageName}}', '{{jsModuleNames.patch}}', entryModule);
+___$$$___doExport('{{normalizedPackageName}}', '{{jsModuleNames.minor}}', entryModule);
+___$$$___doExport('{{normalizedPackageName}}', '{{jsModuleNames.major}}', entryModule);
+___$$$___doExport('{{normalizedPackageName}}', '{{jsModuleNames.any}}', entryModule);
