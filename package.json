@@ -1,6 +1,6 @@
 {
   "name": "@jenkins-cd/js-builder",
-  "version": "0.0.60-tf-beta-1",
+  "version": "0.0.60-tf-beta-2",
   "description": "Jenkins CI JavaScript Build utilities.",
   "main": "index.js",
   "scripts": {
