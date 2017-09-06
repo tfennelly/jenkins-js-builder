@@ -16,7 +16,7 @@ var args = require('../args');
 var paths = require('../paths');
 var maven = require('../maven');
 
-function pipelingPlugin(bundleDef, bundleOutFile) {
+function pipelinePlugin(bundleDef, bundleOutFile) {
     return through.obj(function (bundle, encoding, callback) {
         if (!(bundle instanceof Buffer)) {
             callback(new Error('Sorry, this transform only supports Buffers.'));
@@ -468,5 +468,5 @@ function getBuilderVersion() {
     return builderPackageJson.version;
 }
 
-exports.pipelinePlugin = pipelingPlugin;
+exports.pipelinePlugin = pipelinePlugin;
 exports.updateBundleStubs = updateBundleStubs;
