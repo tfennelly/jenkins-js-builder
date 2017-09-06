@@ -15,6 +15,10 @@ var node_modules_path = cwd + '/node_modules/';
 var args = require('../args');
 var paths = require('../paths');
 var maven = require('../maven');
+var adjunctexternal = require('../adjunctexternal');
+var templates = require('../templates');
+var doImportPackEntrySourceTemplate = templates.getTemplate('doImport-pack-entry-source.hbs');
+var moduleRequireTemplate = templates.getTemplate('module-require.hbs');
 
 function pipelinePlugin(bundleDef, bundleOutFile) {
     return through.obj(function (bundle, encoding, callback) {
@@ -57,9 +61,9 @@ function pipelinePlugin(bundleDef, bundleOutFile) {
 
 function updateBundleStubs(packEntries, moduleMappings, skipFullPathToIdRewrite) {
     var metadata = extractBundleMetadata(packEntries);
-    var jsModulesModuleDef = metadata.getPackEntriesByName('@jenkins-cd/js-modules');
+    var jsModulesPackEntry = metadata.getJSModulesPackEntry();
 
-    if (jsModulesModuleDef.length === 0) {
+    if (!jsModulesPackEntry) {
         // If @jenkins-cd/js-modules is not present in the pack, then
         // the earlier require transformers must not have found require
         // statements for the modules defined in the supplied moduleMappings.
@@ -69,52 +73,77 @@ function updateBundleStubs(packEntries, moduleMappings, skipFullPathToIdRewrite)
             var moduleMapping = moduleMappings[i];
             var toSpec = new ModuleSpec(moduleMapping.to);
             var importAs = toSpec.importAs();
-            var newSource = "module.exports = require('@jenkins-cd/js-modules').requireModule('" + importAs + "');";
 
             if (!moduleMapping.fromSpec) {
                 moduleMapping.fromSpec = new ModuleSpec(moduleMapping.from);
             }
 
-            mapByPackageName(moduleMapping.fromSpec.moduleName, importAs, newSource);
+            mapByPackageName(moduleMapping.fromSpec.moduleName, importAs);
 
             // And check are there aliases that can be mapped...
             if (moduleMapping.config && moduleMapping.config.aliases) {
                 var aliases = moduleMapping.config.aliases;
+                var newSource = "module.exports = require('@jenkins-cd/js-modules').requireModule('" + importAs + "');";
                 for (var ii = 0; ii < aliases.length; ii++) {
-                    mapByNodeModulesPath(aliases[ii], importAs, newSource);
+                    mapByNodeModulesPath(aliases[ii], importAs, newSource, {
+                        '@jenkins-cd/js-modules': jsModulesPackEntry.id
+                    });
                 }
             }
         }
+
+        // Add the doImport pack entry to the bundle.
+        var doImportPackEntry = {
+            id: '____jenkins_doImport',
+            source: doImportPackEntrySourceTemplate({
+                internalRequireFuncName: adjunctexternal.INTERNAL_REQUIRE_FUNC_NAME
+            }),
+            deps: {
+                '@jenkins-cd/js-modules': jsModulesPackEntry.id
+            }
+        };
+        metadata.packEntries.push(doImportPackEntry);
+        metadata.modulesDefs['____jenkins_doImport'] = {
+            id: '____jenkins_doImport'
+        };
     }
 
-    function mapByPackageName(moduleName, importModule, newSource) {
-        var mappedPackEntries = metadata.getPackEntriesByName(moduleName);
-        if (mappedPackEntries.length === 1) {
-            setPackSource(mappedPackEntries[0], importModule, newSource);
-        } else if (mappedPackEntries.length > 1) {
-            logger.logWarn('Cannot map module "' + moduleName + '". Multiple bundle map entries are known by this name (in different contexts).');
+    function mapByPackageName(packageName, packageId) {
+        var packEntries = metadata.getPackEntriesByName(packageName);
+        if (packEntries.length > 0) {
+            for (var i = 0; i < packEntries.length; i++) {
+                var packEntry = packEntries[i];
+                var moduleDef = metadata.getModuleDefById(packEntry.id);
+                if (moduleDef) {
+                    var newSource = moduleRequireTemplate({
+                        packageId: packageId,
+                        moduleName: moduleDef.node_module
+                    });
+                    setPackSource(packEntry, packageId, newSource, {
+                        '____jenkins_doImport': '____jenkins_doImport'
+                    });
+                }
+            }
         } else {
             // This can happen if the pack with that ID was already removed
             // because it's no longer being used (has nothing depending on it).
             // See removeDependant and how it calls removePackEntryById.
         }
     }
-    function mapByNodeModulesPath(node_modules_path, importModule, newSource) {
+    function mapByNodeModulesPath(node_modules_path, importModule, newSource, deps) {
         var packEntry = metadata.getPackEntriesByNodeModulesPath(node_modules_path);
         if (packEntry) {
-            setPackSource(packEntry, importModule, newSource);
+            setPackSource(packEntry, importModule, newSource, deps);
         }
     }
-    function setPackSource(packEntry, importModule, newSource) {
+    function setPackSource(packEntry, importModule, newSource, deps) {
         var moduleDef = metadata.modulesDefs[packEntry.id];
 
         if (moduleDef) {
             var originalDeps = packEntry.deps;
 
             packEntry.source = newSource;
-            packEntry.deps = {
-                '@jenkins-cd/js-modules': jsModulesModuleDef[0].id
-            };
+            packEntry.deps = deps;
 
             // Mark the moduleDef with info that helps us recognise that it
             // was stubbed.
@@ -195,6 +224,9 @@ function extractBundleMetadata(packEntries) {
         modulesDefs: modulesDefs,
         getPackEntryById: function(id) {
             return getPackEntryById(this.packEntries, id);
+        },
+        getJSModulesPackEntry: function() {
+            return getJSModulesPackEntry(this);
         },
         getPackEntriesByName: function(name) {
             return getPackEntriesByName(this, name);
@@ -287,7 +319,7 @@ function nodeModulesRelPath(absoluteModulePath) {
     if (absoluteModulePath.indexOf(node_modules_path) === 0) {
         return absoluteModulePath.substring(node_modules_path.length);
     }
-    return undefined;
+    return absoluteModulePath;
 }
 
 function getPackEntryById(packEntries, id) {
@@ -299,13 +331,28 @@ function getPackEntryById(packEntries, id) {
     return undefined;
 }
 
+function getJSModulesPackEntry(metadata) {
+    var packEntries = getPackEntriesByName(metadata, '@jenkins-cd/js-modules');
+
+    for (var i = 0; packEntries.length; i++) {
+        var packEntry = packEntries[i];
+        var modulesDef = metadata.modulesDefs[packEntry.id];
+
+        if (modulesDef.isKnownAs('@jenkins-cd/js-modules')) {
+            return packEntry;
+        }
+    }
+
+    return undefined;
+}
+
 function getPackEntriesByName(metadata, name) {
     var packEntries = [];
 
     for (var packId in metadata.modulesDefs) {
         if (metadata.modulesDefs.hasOwnProperty(packId)) {
             var modulesDef = metadata.modulesDefs[packId];
-            if (modulesDef.isKnownAs(name)) {
+            if (modulesDef.packageInfo.name === name) {
                 var packEntry = metadata.getPackEntryById(packId);
                 if (packEntry) {
                     packEntries.push(packEntry);
@@ -437,11 +484,13 @@ function mapDependencyId(from, to, metadata) {
 
     // Fixup the moduleDef
     var moduleDef = metadata.modulesDefs[from];
-    // Remove the moduleDef from the id it's currently known as.
-    delete metadata.modulesDefs[from];
-    // And reset the id 'to' the new id
-    moduleDef.id = to;
-    metadata.modulesDefs[to] = moduleDef;
+    if (moduleDef) {
+        // Remove the moduleDef from the id it's currently known as.
+        delete metadata.modulesDefs[from];
+        // And reset the id 'to' the new id
+        moduleDef.id = to;
+        metadata.modulesDefs[to] = moduleDef;
+    }
 }
 
 function listAllModuleNames(modulesDefs) {

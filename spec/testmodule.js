@@ -7,9 +7,12 @@ var multiply = require('./multiply.es6');
 multiply.multiply(2, 3);
 //console.log(multiply.multiply(2, 3));
 
-// Load underscore , forcing it to be bundled and an
+// Load underscore.string, forcing it to be bundled and an
 // import request for it to be made.
 require('underscore.string');
+
+// Load underscore.string/endsWith.js, This should also be stubbed out.
+require('underscore.string/endsWith.js');
 
 document.body.innerHTML = helloContent;
 window.testmoduleXYZ = 'Hello';
