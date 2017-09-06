@@ -228,6 +228,9 @@ function extractBundleMetadata(packEntries) {
         getJSModulesPackEntry: function() {
             return getJSModulesPackEntry(this);
         },
+        getPackEntriesKnownAs: function(name) {
+            return getPackEntriesKnownAs(this, name);
+        },
         getPackEntriesByName: function(name) {
             return getPackEntriesByName(this, name);
         },
@@ -344,6 +347,24 @@ function getJSModulesPackEntry(metadata) {
     }
 
     return undefined;
+}
+
+function getPackEntriesKnownAs(metadata, name) {
+    var packEntries = [];
+
+    for (var packId in metadata.modulesDefs) {
+        if (metadata.modulesDefs.hasOwnProperty(packId)) {
+            var modulesDef = metadata.modulesDefs[packId];
+            if (modulesDef.isKnownAs(name)) {
+                var packEntry = metadata.getPackEntryById(packId);
+                if (packEntry) {
+                    packEntries.push(packEntry);
+                }
+            }
+        }
+    }
+
+    return packEntries;
 }
 
 function getPackEntriesByName(metadata, name) {
