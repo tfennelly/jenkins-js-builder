@@ -1,10 +1,10 @@
-var jsModules = require('@jenkins-cd/js-modules');
-
+// @@@@ REQUIRE-START
 // Require all the .js and .jsx resources in the package, forcing them
 // to be added to the generated bundle.
 {{#each jsFiles}}
-try { require('{{this}}'); } catch (e) {}
+require('{{this}}');
 {{/each}}
+// @@@@ REQUIRE-END
 
 // Add an "internal" require function on the exported module.
 // Bundles will use this to require resources inside the package.

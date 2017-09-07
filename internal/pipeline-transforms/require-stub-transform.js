@@ -110,6 +110,17 @@ function updateBundleStubs(packEntries, moduleMappings, skipFullPathToIdRewrite)
         }
         entryModulePackEntry.source = "var ___$$$___requiredModuleMappings = " + JSON.stringify(requiredModuleMappings) + ";\n\n" + entryModulePackEntry.source;
 
+        // Also update the entry module (dependency bundles only) to remove manufactured
+        // module require list, stopping those modules from being executed on bundle startup.
+        // See internal/templates/export-module.hbs.
+        var originalSource = entryModulePackEntry.source;
+        var requireStart = originalSource.indexOf('// @@@@ REQUIRE-START');
+        if (requireStart !== -1) {
+            var requireEnd = (originalSource.indexOf('// @@@@ REQUIRE-END') + '// @@@@ REQUIRE-END'.length);
+            entryModulePackEntry.source = originalSource.substring(0, requireStart);
+            entryModulePackEntry.source += originalSource.substring(requireEnd);
+        }
+
         // Add the doImport pack entry to the bundle.
         var doImportPackEntry = {
             id: '____jenkins_doImport',
