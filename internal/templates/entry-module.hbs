@@ -110,8 +110,18 @@ function ___$$$___doBundleInit() {
 if (___$$$___requiredModuleMappings.length > 0) {
     ___$$$___jsModules.importModule.apply(___$$$___jsModules.importModule, ___$$$___requiredModuleMappings)
         .onFulfilled(function() {
-        ___$$$___doBundleInit();
-    });
+            ___$$$___doBundleInit();
+        })
+        .onRejected(function() {
+            console.error("[" + whoami + "] Depends on bundles: ", ___$$$___requiredModuleMappings);
+            for (var i = 0; i < ___$$$___requiredModuleMappings.length; i++) {
+                try {
+                    ___$$$___jsModules.requireModule(___$$$___requiredModuleMappings[i]);
+                } catch(e) {
+                    console.error("    " + ___$$$___requiredModuleMappings[i] + " not loaded. May have timed out, or maybe there's a circular dependency?");
+                }
+            }
+        });
 } else {
     ___$$$___doBundleInit();
 }
