@@ -69,6 +69,8 @@ function updateBundleStubs(packEntries, moduleMappings, skipFullPathToIdRewrite)
         // statements for the modules defined in the supplied moduleMappings.
         // In that case, nothing to be done so exit out.
     } else {
+        var requiredModuleMappings = [];
+
         for (var i = 0; i < moduleMappings.length; i++) {
             var moduleMapping = moduleMappings[i];
             var toSpec = new ModuleSpec(moduleMapping.to);
@@ -78,7 +80,15 @@ function updateBundleStubs(packEntries, moduleMappings, skipFullPathToIdRewrite)
                 moduleMapping.fromSpec = new ModuleSpec(moduleMapping.from);
             }
 
-            mapByPackageName(moduleMapping.fromSpec.moduleName, importAs);
+            var packEntries = mapByPackageName(moduleMapping.fromSpec.moduleName, importAs);
+            if (packEntries.length > 0) {
+                // The bundle is using the package ID'd by the mapping. This means we need
+                // to add that mapping target to the list of requireModuleMappings used to update
+                // the entry module.
+                if (requiredModuleMappings.indexOf(importAs) === -1) {
+                    requiredModuleMappings.push(importAs);
+                }
+            }
 
             // And check are there aliases that can be mapped...
             if (moduleMapping.config && moduleMapping.config.aliases) {
@@ -91,6 +101,14 @@ function updateBundleStubs(packEntries, moduleMappings, skipFullPathToIdRewrite)
                 }
             }
         }
+
+        // Update the entry module with th list of required modules i.e. dependencies.
+        // We gathered this list while applying the above mappings.
+        var entryModulePackEntry = metadata.getEntryModulePackEntry();
+        if (!entryModulePackEntry) {
+            throw new Error("No entry module found.");
+        }
+        entryModulePackEntry.source = "var ___$$$___requiredModuleMappings = " + JSON.stringify(requiredModuleMappings) + ";\n\n" + entryModulePackEntry.source;
 
         // Add the doImport pack entry to the bundle.
         var doImportPackEntry = {
@@ -129,6 +147,7 @@ function updateBundleStubs(packEntries, moduleMappings, skipFullPathToIdRewrite)
             // because it's no longer being used (has nothing depending on it).
             // See removeDependant and how it calls removePackEntryById.
         }
+        return packEntries;
     }
     function mapByNodeModulesPath(node_modules_path, importModule, newSource, deps) {
         var packEntry = metadata.getPackEntriesByNodeModulesPath(node_modules_path);
@@ -222,6 +241,9 @@ function extractBundleMetadata(packEntries) {
     var metadata = {
         packEntries: packEntries,
         modulesDefs: modulesDefs,
+        getEntryModulePackEntry: function() {
+            return getEntryModulePackEntry(this);
+        },
         getPackEntryById: function(id) {
             return getPackEntryById(this.packEntries, id);
         },
@@ -329,6 +351,16 @@ function getPackEntryById(packEntries, id) {
     for (var i in packEntries) {
         if (packEntries[i].id.toString() === id.toString()) {
             return packEntries[i];
+        }
+    }
+    return undefined;
+}
+
+function getEntryModulePackEntry(metadata) {
+    for (var i = 0; metadata.packEntries.length; i++) {
+        var packEntry = metadata.packEntries[i];
+        if (packEntry.entry) {
+            return packEntry;
         }
     }
     return undefined;
