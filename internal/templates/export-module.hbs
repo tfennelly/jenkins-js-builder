@@ -1,6 +1,11 @@
 // @@@@ REQUIRE-START
 // Require all the .js and .jsx resources in the package, forcing them
 // to be added to the generated bundle.
+//
+// NOTE: This block will be stripped out once the bundle is generated because we do not want modules to
+// be loaded at runtime unless explicitly requested. We just add it in order to force browserify to generate
+// the pack entry dependencies. Also, removing it obviously removes from weight from the bundle too, as a bonus.
+//
 {{#each jsFiles}}
 require('{{this}}');
 {{/each}}
