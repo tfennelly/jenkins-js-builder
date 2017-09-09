@@ -19,6 +19,7 @@ var adjunctexternal = require('../adjunctexternal');
 var templates = require('../templates');
 var doImportPackEntrySourceTemplate = templates.getTemplate('doImport-pack-entry-source.hbs');
 var moduleRequireTemplate = templates.getTemplate('module-require.hbs');
+var duplicatePackages = [];
 
 function pipelinePlugin(bundleDef, bundleOutFile) {
     return through.obj(function (bundle, encoding, callback) {
@@ -30,7 +31,7 @@ function pipelinePlugin(bundleDef, bundleOutFile) {
         var bundleContent = bundle.toString('utf8');
         var packEntries  = unpack(bundleContent);
 
-        var metadata = updateBundleStubs(packEntries, bundleDef.moduleMappings, true);
+        var metadata = updateBundleStubs(packEntries, bundleDef.moduleMappings, bundleDef.as, true);
         metadata = fullPathsToTruncatedPaths(metadata);
         var bundleInfo = {
             jsModulesId: bundleDef.asModuleSpec.importAs(),
@@ -59,7 +60,7 @@ function pipelinePlugin(bundleDef, bundleOutFile) {
     });
 }
 
-function updateBundleStubs(packEntries, moduleMappings, skipFullPathToIdRewrite) {
+function updateBundleStubs(packEntries, moduleMappings, bundleName, skipFullPathToIdRewrite) {
     var metadata = extractBundleMetadata(packEntries);
     var jsModulesPackEntry = metadata.getJSModulesPackEntry();
 
@@ -139,18 +140,38 @@ function updateBundleStubs(packEntries, moduleMappings, skipFullPathToIdRewrite)
 
     function mapByPackageName(packageName, packageId) {
         var packEntries = metadata.getPackEntriesByName(packageName);
+        var mappedPackEntries = [];
         if (packEntries.length > 0) {
             for (var i = 0; i < packEntries.length; i++) {
                 var packEntry = packEntries[i];
                 var moduleDef = metadata.getModuleDefById(packEntry.id);
+
                 if (moduleDef) {
-                    var newSource = moduleRequireTemplate({
-                        packageId: packageId,
-                        moduleName: moduleDef.node_module
-                    });
-                    setPackSource(packEntry, packageId, newSource, {
-                        '____jenkins_doImport': '____jenkins_doImport'
-                    });
+                    // Only map top level modules. Nested modules need to be
+                    // handled separately.
+                    if (moduleDef.top_level_module) {
+                        var newSource = moduleRequireTemplate({
+                            packageId: packageId,
+                            moduleName: moduleDef.node_module
+                        });
+                        setPackSource(packEntry, packageId, newSource, {
+                            '____jenkins_doImport': '____jenkins_doImport'
+                        });
+                        mappedPackEntries.push(packEntry);
+                    } else {
+                        if (duplicatePackages.indexOf(moduleDef.packageInfo.path) === -1) {
+                            logger.logWarn("======================================================================");
+                            logger.logWarn("WARNING: Duplicate dependency package found while generating the " + bundleName + " bundle.");
+                            logger.logWarn("Package '" + packageName + "' is marked for import into the " + bundleName + " bundle.");
+                            logger.logWarn("A nested duplicate instance of this package was found at '" + moduleDef.packageInfo.path + "'.");
+                            logger.logWarn("Nested duplicate packages cannot be imported i.e. will be inlined in the bundle. Duplicate nested");
+                            logger.logWarn("instances of a package can cause various issues e.g. duplicate runtime module instances causing");
+                            logger.logWarn("unexpected runtime behaviour, as well as bloating of bundles. You should try remove the duplication.");
+                            logger.logWarn("This usually involves coordinating the versions of the dependencies across packages.");
+                            logger.logWarn("======================================================================");
+                            duplicatePackages.push(moduleDef.packageInfo.path);
+                        }
+                    }
                 }
             }
         } else {
@@ -158,7 +179,7 @@ function updateBundleStubs(packEntries, moduleMappings, skipFullPathToIdRewrite)
             // because it's no longer being used (has nothing depending on it).
             // See removeDependant and how it calls removePackEntryById.
         }
-        return packEntries;
+        return mappedPackEntries;
     }
     function mapByNodeModulesPath(node_modules_path, importModule, newSource, deps) {
         var packEntry = metadata.getPackEntriesByNodeModulesPath(node_modules_path);
@@ -307,6 +328,9 @@ function extractModuleDefs(packEntries) {
 
         if (typeof modulePath === 'string') {
             moduleDef.node_module = nodeModulesRelPath(modulePath);
+            // Is the module a top level module, or not? If it's a top level module it will
+            // NOT have "node_modules" in the module path.
+            moduleDef.top_level_module = (moduleDef.node_module.indexOf('node_modules') === -1);
         }
 
         modulesDefs[modulePath] = moduleDef;
