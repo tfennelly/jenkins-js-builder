@@ -339,31 +339,6 @@ function less(src, targetDir) {
 
 function addModuleMappingTransforms(bundle, bundler) {
     var moduleMappings = bundle.moduleMappings;
-    var requiredModuleMappings = [];
-
-    if (moduleMappings.length > 0) {
-        var requireSearch = transformTools.makeStringTransform("requireSearch", {},
-            function(content, opts, cb) {
-                for (var i = 0; i < moduleMappings.length; i++) {
-                    var mapping = moduleMappings[i];
-                    // Do a rough search for the module name. If we find it, then we
-                    // add that module name to the list. This may result in some false
-                    // positives, but that's okay. The most important thing is that we
-                    // do add the import for the module if it is required. Adding additional
-                    // imports for modules not required is not optimal, but is also not the
-                    // end of the world.
-                    if (content.indexOf(mapping.fromSpec.moduleName) !== -1) {
-                        var toSpec = new ModuleSpec(mapping.to);
-                        var importAs = toSpec.importAs();
-                        if (requiredModuleMappings.indexOf(importAs) === -1) {
-                            requiredModuleMappings.push(importAs);
-                        }
-                    }
-                }
-                return cb(null, content);
-            });
-        bundler.transform({ global: true }, requireSearch);
-    }
     var importExportApplied = false;
     var importExportTransform = transformTools.makeStringTransform("importExportTransform", {},
         function (content, opts, done) {
@@ -431,15 +406,6 @@ function addModuleMappingTransforms(bundle, bundler) {
         });
 
     bundler.transform(importExportTransform);
-
-    var through = require('through2');
-    bundler.pipeline.get('deps').push(through.obj(function (row, enc, next) {
-        if (row.entry) {
-            row.source = "var ___$$$___requiredModuleMappings = " + JSON.stringify(requiredModuleMappings) + ";\n\n" + row.source;
-        }
-        this.push(row);
-        next();
-    }));
 }
 
 function expandDependencyExports(bundleExports) {

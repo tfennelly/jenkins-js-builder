@@ -14,14 +14,14 @@ describe("require-stub-transform", function () {
 
             // Check we have defs for all modules. We won't have a def for
             // module1 because it's the bundle "entry" module.
-            expect(getPackEntryByName(metadata, './module2')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module3')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module4')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module5')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module6')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module7')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module8')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module9')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module2')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module3')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module4')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module5')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module6')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module7')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module8')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module9')).toBeDefined();
 
             done()
         });
@@ -39,17 +39,17 @@ describe("require-stub-transform", function () {
             //logMetadata(metadata);
 
             // We should still have defs for all modules.
-            expect(getPackEntryByName(metadata, './module2')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module3')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module4')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module5')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module6')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module7')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module8')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module9')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module2')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module3')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module4')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module5')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module6')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module7')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module8')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module9')).toBeDefined();
 
             // Now check the bundle pack map entry for module6...
-            var module6PackEntry = getPackEntryByName(metadata, './module6');
+            var module6PackEntry = getPackEntriesKnownAs(metadata, './module6');
             expect(module6PackEntry).toBeDefined();
             // The source should just be the js-modules require ...
             expect(module6PackEntry.source).toBe("module.exports = require('@jenkins-cd/js-modules').requireModule('mod6:mod6v2');");
@@ -71,14 +71,14 @@ describe("require-stub-transform", function () {
             var metadata = transformModule.updateBundleStubs(packEntries, [{from: './module7', to: 'mod7:mod6v2'}]);
 
             // We should have defs for all modules except module8.
-            expect(getPackEntryByName(metadata, './module2')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module3')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module4')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module5')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module6')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module7')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module8')).not.toBeDefined();
-            expect(getPackEntryByName(metadata, './module9')).not.toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module2')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module3')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module4')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module5')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module6')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module7')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module8')).not.toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module9')).not.toBeDefined();
 
             done()
         });
@@ -97,14 +97,14 @@ describe("require-stub-transform", function () {
             var metadata = transformModule.updateBundleStubs(packEntries, [{from: './module2', to: 'mod2:mod6v2'}]);
 
             // We should have defs for all modules except module4.
-            expect(getPackEntryByName(metadata, './module2')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module3')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module4')).not.toBeDefined();
-            expect(getPackEntryByName(metadata, './module5')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module6')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module7')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module8')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module9')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module2')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module3')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module4')).not.toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module5')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module6')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module7')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module8')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module9')).toBeDefined();
 
             done()
         });
@@ -127,14 +127,14 @@ describe("require-stub-transform", function () {
             ]);
 
             // We should have defs for all modules except module4, module5 and module6.
-            expect(getPackEntryByName(metadata, './module2')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module3')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module4')).not.toBeDefined();
-            expect(getPackEntryByName(metadata, './module5')).not.toBeDefined();
-            expect(getPackEntryByName(metadata, './module6')).not.toBeDefined();
-            expect(getPackEntryByName(metadata, './module7')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module8')).toBeDefined();
-            expect(getPackEntryByName(metadata, './module9')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module2')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module3')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module4')).not.toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module5')).not.toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module6')).not.toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module7')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module8')).toBeDefined();
+            expect(getPackEntriesKnownAs(metadata, './module9')).toBeDefined();
 
             done()
         });
@@ -146,8 +146,8 @@ describe("require-stub-transform", function () {
                         var metadata = transformModule.updateBundleStubs(packEntries, []);
 
             // We should have defs for all modules except module4, module5 and module6.
-            var dedupeOnePackEntry = getPackEntryByName(metadata, './dedupe-one');
-            var dedupeTwoPackEntry = getPackEntryByName(metadata, './dedupe-two');
+            var dedupeOnePackEntry = getPackEntriesKnownAs(metadata, './dedupe-one');
+            var dedupeTwoPackEntry = getPackEntriesKnownAs(metadata, './dedupe-two');
 
             expect(dedupeOnePackEntry).toBeDefined();
             expect(dedupeTwoPackEntry).toBeDefined();
@@ -164,8 +164,8 @@ describe("require-stub-transform", function () {
     });
 });
 
-function getPackEntryByName(metadata, name) {
-    var packEntries = metadata.getPackEntriesByName(name);
+function getPackEntriesKnownAs(metadata, name) {
+    var packEntries = metadata.getPackEntriesKnownAs(name);
     if (packEntries.length > 0) {
         return packEntries[0];
     }
