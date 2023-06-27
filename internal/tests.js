@@ -18,6 +18,8 @@ var builder = global.__builder;
 
 logger.logInfo('Test specs: ' + testSpecs + ' (use --testFileSuffix switch to select different files)');
 
+// This is yet another test
+
 exports.getTestTask = function() {
     if (!paths.testSrcPath) {
         return function() {
