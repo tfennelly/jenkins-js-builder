@@ -1,6 +1,8 @@
 var fs = require('fs');
 var cwd = process.cwd();
 
+// This is a test
+
 exports.isMavenProject = fs.existsSync(cwd + '/pom.xml');
 
 if (exports.isMavenProject) {

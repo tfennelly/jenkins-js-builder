@@ -10,6 +10,8 @@ var fs = require('fs');
 var dependencies = require('./dependecies');
 var logger = require('./logger');
 
+// This is a another test
+
 exports.install = function(builder) {
     // Iterate over all of the installed node_modules. If a given dependency
     // is listed as a dependency of "this" package, then lets see if it has
